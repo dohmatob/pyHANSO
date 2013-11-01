@@ -110,6 +110,10 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
        record of H (Hessian) iterates; one array per run of bfgs1run;
        see bfgs1run for details
 
+    See Also
+    --------
+    `gradsamp`
+
     """
 
     def _log(msg, level=0):
@@ -149,9 +153,8 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
         Grecs = []
         wrecs = []
     for run in xrange(nstart):
-        _log(">" * 80)
-        _log("Staring bfgs1run %i/%i with x0 = %s ..." % (
-                run + 1, nstart, x0[..., run]))
+        _log("Staring bfgs1run %i/%i..." % (
+                run + 1, nstart))
         if verbose > 0 & nstart > 1:
             _log('bfgs: starting point %d' % (run + 1))
         cpumax = cpufinish - time.time()
@@ -202,7 +205,7 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
             inforecs.append(info)
 
         _log('... done (bfgs1run %i/%i).' % (run + 1, nstart))
-        _log("<" * 80)
+        _log("\r\n")
 
         # HH should be exactly symmetric as of version 2.02, but does no harm
         _H.append((HH + HH.T) / 2.)

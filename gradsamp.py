@@ -19,6 +19,10 @@ def gradsamp(func, grad, x0, maxit=10, cpumax=np.inf, verbose=1, **kwargs):
     A Robust Gradient Sampling Algorithm for Nonsmooth, Nonconvex Optimization
     SIAM J. Optimization, 2005
 
+    See Also
+    --------
+    `bfgs`
+
     """
 
     def _log(msg, level=0):
@@ -71,8 +75,6 @@ def gradsamp(func, grad, x0, maxit=10, cpumax=np.inf, verbose=1, **kwargs):
         if time.time() > cpufinish:
             break
 
-    raise RuntimeError("I'm still coding this thing, pal!")
-    print np.array(g).shape
     return x, f, np.array(g).T, dnorm, np.array(X)[0], np.array(G)[0], w
 
 if __name__ == '__main__':

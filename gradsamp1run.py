@@ -33,7 +33,6 @@ def gradsamp1run(func, grad, x0, f0=None, g0=None, samprad=[1e-4, 1e-5, 1e-6],
         f0 = f
         g0 = g
 
-    raise RuntimeError("I'm still coding this thing, pal!")
     return x, f, g, dnorm, np.array(X), np.array(G), w
 
 

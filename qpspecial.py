@@ -50,7 +50,7 @@ def qpspecial(G, maxit=100, x=None, verbose=1):
     ap = 0
     ad = 0
     _log("k     mu       stpsz      res")
-    _log("=================================")
+    _log("--------------------------------")
     aborted_loop = False
     for k in xrange(maxit):
         r1 = -np.dot(Q, x) + e * y + z
@@ -133,12 +133,14 @@ def qpspecial(G, maxit=100, x=None, verbose=1):
     q = np.dot(d.T, d)
 
     if verbose > 0:
-        reason = "Converged to optimum."
+        reason = "result: optimal."
         if info[0] == 1:
             reason = 'maxit reached.'
         elif info[0] == 2:
             reason = "Failed."
+        _log("---------------------------------")
         _log(reason)
+        _log("---------------------------------")
 
     return x, d, q, info
 

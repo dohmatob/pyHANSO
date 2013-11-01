@@ -221,8 +221,9 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
         if maxit > 100:
             maxit = 100
 
-        # otherwise grad sampling will augment with random starts
-        # nstart = 1
+        # # otherwise grad sampling will augment with random starts
+        # x0 = x0[..., :1]
+        # assert 0, x0.shape
 
         cpumax = cpufinish - time.time()  # time left
 
@@ -253,10 +254,13 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
 
 
 if __name__ == '__main__':
+    import os
+    import scipy.io
+    from setx0 import setx0
     func_names = [
         # 'Nesterov',
-        # 'Rosenbrock "banana"',
-        'l1-norm',
+         'Rosenbrock "banana"',
+        # 'l1-norm',
         # 'l2-norm'  # this is smooth and convex, we're only being ironic here
         ]
     wolfe_kinds = [0,  # weak
@@ -279,12 +283,16 @@ if __name__ == '__main__':
         elif "esterov" in func_name:
             from example_functions import (nesterov as func,
                                            grad_nesterov as grad)
+        if os.path.exists("/tmp/x0.mat"):
+                x0 = scipy.io.loadmat("/tmp/x0.mat", squeeze_me=True,
+                                      struct_as_record=False)['x0']
+                if x0.ndim == 1:
+                    x0 = x0.reshape((-1, 1), order='F')
+        else:
+            x0 = setx0(nvar, nstart)
 
-        import scipy.io
-        x0 = scipy.io.loadmat("/tmp/x0.mat", squeeze_me=True,
-                              struct_as_record=False)['x0']
-        if x0.ndim == 1:
-            x0 = x0.reshape((-1, 1), order='F')
+        if "banana" in func_name:
+            x0 = x0[:nvar, ...]
 
         nvar, nstart = x0.shape
 
