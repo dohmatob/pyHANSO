@@ -67,7 +67,7 @@ def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
             # since dnormnew is first to satisfy tolerance, it must equal dnorm
             _log('  tolerance met at iter %d, f = %g, dnorm = %5.1e' % (
                     it, f, dnorm))
-            return x, f, g, dnorm, x, G, w, w, quitall
+            return x, f, g, dnorm, X, G, w, quitall
         elif gtdnew >= 0 or np.isnan(gtdnew):
             # dnorm, not dnormnew, which may be bigger
             _log('  not descent direction, quit at iter %d, f = %g, '
@@ -81,8 +81,8 @@ def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
         wolfe1 = 0
         wolfe2 = 0
         alpha, x, f, g, fail, _, _, _ = linesch_ww(
-            x, func, grad, f, g, dnew, wolfe1=wolfe1, wolfe2=wolfe2,
-            fvalquit=fvalquit, verbose=verbose)
+            x, func, grad, dnew, func0=f, grad0=g, wolfe1=wolfe1,
+            wolfe2=wolfe2, fvalquit=fvalquit, verbose=verbose)
         _log('  iter %d: step = %5.1e, f = %g, dnorm = %5.1e' % (
                 it, alpha, f, dnormnew), level=1)
 
@@ -103,7 +103,7 @@ def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
         if time.time() > cpufinish:
             _log('  cpu time limit exceeded, quit at iter #d' % it)
             quitall = 1
-            return x, f, g, dnorm, G, w, quitall
+            return x, f, g, dnorm, X, G, w, quitall
 
     _log('  %d iters reached, f = %g, dnorm = %5.1e' % (maxit, f, dnorm))
     return x, f, g, dnorm, X, G, w, quitall

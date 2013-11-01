@@ -8,7 +8,7 @@ import numpy as np
 import numpy.linalg
 
 
-def linesch_ww(x0, func, grad, d, f0=None, g0=None, wolfe1=0, wolfe2=.5,
+def linesch_ww(x0, func, grad, d, func0=None, grad0=None, wolfe1=0, wolfe2=.5,
                fvalquit=-np.inf, verbose=1, **kwargs):
     """
     LINESCH_WW Line search enforcing weak Wolfe conditions, suitable
@@ -129,8 +129,8 @@ def linesch_ww(x0, func, grad, d, f0=None, g0=None, wolfe1=0, wolfe2=.5,
 
     x0 = np.array(x0)
     d = np.array(d)
-    f0 = func(x0) if f0 is None else f0
-    g0 = grad(x0) if g0 is None else g0
+    func0 = func(x0) if func0 is None else func0
+    grad0 = grad(x0) if grad0 is None else grad0
 
     if (wolfe1 < 0 or wolfe1 > wolfe2 or wolfe2 > 1
         ):  # allows wolfe1 = 0, wolfe2 = 0 and wolfe2 = 1
@@ -139,14 +139,15 @@ def linesch_ww(x0, func, grad, d, f0=None, g0=None, wolfe1=0, wolfe2=.5,
 
     alpha = 0  # lower bound on steplength conditions
     xalpha = np.array(x0)
-    falpha = f0
+    falpha = func0
 
     # need to pass g0, not g0'*d, in case line search fails
-    galpha = g0
+    galpha = grad0
     #  upper bound on steplength satisfying weak Wolfe conditions
     beta = np.inf
     gbeta = np.nan * np.ones(x0.shape)
-    g0 = np.dot(g0, d)
+    g0 = np.dot(grad0.T, d)
+    print grad0, d, g0
     if g0 >= 0:
         # error('linesch_ww_mod: g0 is nonnegative, indicating d not
         # a descent direction')
@@ -186,7 +187,7 @@ def linesch_ww(x0, func, grad, d, f0=None, g0=None, wolfe1=0, wolfe2=.5,
         gtd = np.dot(g.T, d)
 
         # the first condition must be checked first. NOTE THE >=.
-        if f >= f0 + wolfe1 * t * g0 or np.isnan(f):
+        if f >= func0 + wolfe1 * t * g0 or np.isnan(f):
             # first condition violated, gone too far
             beta = t
             gbeta = g  # discard f
