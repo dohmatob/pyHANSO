@@ -6,9 +6,9 @@ from getbundle import getbundle
 from qpspecial import qpspecial
 
 
-def gradsampfixed(func, grad, x0, samprad=1e-4, maxit=10, normtol=1e-6,
-                  fvalquit=-np.inf, cpumax=np.inf, verbose=2,
-                  ngrad=None, **kwargs):
+def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
+                  normtol=1e-6, fvalquit=-np.inf, cpumax=np.inf,
+                  verbose=2, ngrad=None, **kwargs):
     """"
     Gradient sampling minimization with fixed sampling radius
     intended to be called by gradsamp1run only
@@ -38,9 +38,10 @@ def gradsampfixed(func, grad, x0, samprad=1e-4, maxit=10, normtol=1e-6,
     _log('gradsamp: sampling radius = %7.1e' % samprad)
 
     x = np.array(x0)
-    f0, g0 = func(x0), grad(x0)
+    f0 = func(x0) if f0 is None else f0
+    g0 = grad(x0) if g0 is None else g0
     f = f0
-    g = np.array(g0)
+    g = g0
     X = x
     G = np.array([g]).T
     w = 1
@@ -80,7 +81,7 @@ def gradsampfixed(func, grad, x0, samprad=1e-4, maxit=10, normtol=1e-6,
         wolfe1 = 0
         wolfe2 = 0
         alpha, x, f, g, fail, _, _, _ = linesch_ww(
-            x, func, grad, dnew, wolfe1=wolfe1, wolfe2=wolfe2,
+            x, func, grad, f, g, dnew, wolfe1=wolfe1, wolfe2=wolfe2,
             fvalquit=fvalquit, verbose=verbose)
         _log('  iter %d: step = %5.1e, f = %g, dnorm = %5.1e' % (
                 it, alpha, f, dnormnew), level=1)

@@ -13,7 +13,7 @@ from qpspecial import qpspecial
 from linesch_ww import linesch_ww
 
 
-def bfgs1run(func, grad, x0, maxit=100, nvec=0, verbose=1, normtol=1e-4,
+def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
              fvalquit=-np.inf, xnormquit=np.inf, cpumax=np.inf,
              strongwolfe=False, wolfe1=0, wolfe2=.5, quitLSfail=1, ngrad=None,
              evaldist=1e-4, H0=None, scale=1, **kwargs):

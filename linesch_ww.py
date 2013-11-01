@@ -8,8 +8,8 @@ import numpy as np
 import numpy.linalg
 
 
-def linesch_ww(x0, func, grad, d, wolfe1=0, wolfe2=.5, fvalquit=-np.inf,
-               verbose=1, **kwargs):
+def linesch_ww(x0, func, grad, d, f0=None, g0=None, wolfe1=0, wolfe2=.5,
+               fvalquit=-np.inf, verbose=1, **kwargs):
     """
     LINESCH_WW Line search enforcing weak Wolfe conditions, suitable
     for minimizing both smooth and nonsmooth functions
@@ -129,7 +129,8 @@ def linesch_ww(x0, func, grad, d, wolfe1=0, wolfe2=.5, fvalquit=-np.inf,
 
     x0 = np.array(x0)
     d = np.array(d)
-    f0, grad0 = func(x0, **kwargs), grad(x0, **kwargs)
+    f0 = func(x0) if f0 is None else f0
+    g0 = grad(x0) if g0 is None else g0
 
     if (wolfe1 < 0 or wolfe1 > wolfe2 or wolfe2 > 1
         ):  # allows wolfe1 = 0, wolfe2 = 0 and wolfe2 = 1
@@ -141,11 +142,11 @@ def linesch_ww(x0, func, grad, d, wolfe1=0, wolfe2=.5, fvalquit=-np.inf,
     falpha = f0
 
     # need to pass g0, not g0'*d, in case line search fails
-    galpha = grad0
+    galpha = g0
     #  upper bound on steplength satisfying weak Wolfe conditions
     beta = np.inf
     gbeta = np.nan * np.ones(x0.shape)
-    g0 = np.dot(grad0, d)
+    g0 = np.dot(g0, d)
     if g0 >= 0:
         # error('linesch_ww_mod: g0 is nonnegative, indicating d not
         # a descent direction')

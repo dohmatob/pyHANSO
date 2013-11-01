@@ -231,13 +231,12 @@ if __name__ == '__main__':
             x0 = x0.reshape((-1, 1), order='F')
 
         for strongwolfe in wolfe_kinds:
-
             # run BFGS
             x, f = hanso(func, grad,
                          x0=x0,
                          # nvar=nvar, nstart=nstart,
                          strongwolfe=strongwolfe,
-                         maxit=1,
+                         maxit=10,
                          normtol=1e-6,
                          xnormquit=np.inf,
                          fvalquit=-np.inf,

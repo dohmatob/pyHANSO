@@ -68,9 +68,9 @@ def getbundle(func, grad, x0, g0=None, samprad=1e-4, n=None):
 
 
 if __name__ == '__main__':
-    from example_functions import (rosenbrock_banana as func,
-                                   grad_rosenbrock_banana as grad)
-    xbundle, gbundle = getbundle(func, grad, [1e-6, -1e-6], .1, 100)
+    from example_functions import (l1 as func,
+                                   gradl1 as grad)
+    xbundle, gbundle = getbundle(func, grad, [1e-6, -1e-6], samprad=1, n=100)
     import matplotlib.pyplot as plt
     plt.scatter(*gbundle)
     plt.show()
