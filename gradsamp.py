@@ -4,8 +4,7 @@ import numpy.linalg
 from gradsamp1run import gradsamp1run
 
 
-def gradsamp(func, grad, x0, f0=None, g0=None, maxit=10,
-             cpumax=np.inf, verbose=1, **kwargs):
+def gradsamp(func, grad, x0, maxit=10, cpumax=np.inf, verbose=1, **kwargs):
     """
     GRADSAMP Gradient sampling algorithm for nonsmooth, nonconvex
     minimization.
@@ -60,7 +59,7 @@ def gradsamp(func, grad, x0, f0=None, g0=None, maxit=10,
             w.append(1)
         else:
             cpumax = cpufinish - time.time()  # time left
-            xtmp, ftmp, gtmp, dnormtmp, Xtmp, Gtmp, wtmp, _ = \
+            xtmp, ftmp, gtmp, dnormtmp, Xtmp, Gtmp, wtmp = \
                 gradsamp1run(func, grad, x0[..., run], f0=f0, g0=g0, **kwargs)
             x.append(xtmp)
             f.append(ftmp)
@@ -69,8 +68,20 @@ def gradsamp(func, grad, x0, f0=None, g0=None, maxit=10,
             X.append(Xtmp)
             G.append(Gtmp)
             w.append(wtmp)
-
         if time.time() > cpufinish:
             break
 
-    return x, f, g, dnorm, X, G, w
+    raise RuntimeError("I'm still coding this thing, pal!")
+    print np.array(g).shape
+    return x, f, np.array(g).T, dnorm, np.array(X)[0], np.array(G)[0], w
+
+if __name__ == '__main__':
+    from setx0 import setx0
+    from example_functions import (l1 as func,
+                                   gradl1 as grad)
+    x0 = setx0(20, 10)
+    x, f, g, dnorm, X, G, w = gradsamp(func, grad, x0)
+    print "fmin:", f
+    print "xopt:", x
+    assert X.shape[0] == 2, X.shape
+    assert G.shape[0] == 2

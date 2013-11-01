@@ -147,7 +147,6 @@ def linesch_ww(x0, func, grad, d, func0=None, grad0=None, wolfe1=0, wolfe2=.5,
     beta = np.inf
     gbeta = np.nan * np.ones(x0.shape)
     g0 = np.dot(grad0.T, d)
-    print grad0, d, g0
     if g0 >= 0:
         # error('linesch_ww_mod: g0 is nonnegative, indicating d not
         # a descent direction')

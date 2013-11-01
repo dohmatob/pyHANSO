@@ -6,12 +6,15 @@
 import numpy as np
 import numpy.linalg
 import time
+from setx0 import setx0
 from bfgs import bfgs
+from gradsamp import gradsamp
 from postprocess import postprocess
 
 
-def hanso(func, grad, sampgrad=False, normtol=1e-6, verbose=2,
-          fvalquit=-np.inf, cpumax=np.inf, **kwargs):
+def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
+          normtol=1e-6, verbose=2, fvalquit=-np.inf, cpumax=np.inf,
+          maxit=100, **kwargs):
     """
     HANSO: Hybrid Algorithm for Nonsmooth Optimization
 
@@ -134,18 +137,35 @@ def hanso(func, grad, sampgrad=False, normtol=1e-6, verbose=2,
         if verbose > level:
             print msg
 
+    # sanitize x0
+    if x0 is None:
+        assert not nvar is None, (
+            "No value specified for x0, expecting a value for nvar")
+        assert not nstart is None, (
+            "No value specified for x0, expecting a value for nstart")
+
+        x0 = setx0(nvar, nstart)
+    else:
+        assert nvar is None, (
+            "Value specified for x0, expecting no value for nvar")
+
+        assert nstart is None, (
+            "Value specified for x0, expecting no value for nstart")
+
+        x0 = np.array(x0)
+        nvar, nstart = x0.shape
+
     cpufinish = time.time() + cpumax
 
     # run BFGS step
     kwargs['output_records'] = 1
-    x, f, d, H, it, info, X, G, w = bfgs(func, grad, fvalquit=fvalquit,
+    x, f, d, H, it, info, X, G, w = bfgs(func, grad, x0=x0, fvalquit=fvalquit,
                                          normtol=normtol, cpumax=cpumax,
+                                         maxit=maxit,
                                          verbose=verbose, **kwargs)
 
     # throw away all but the best result
     assert len(f) == np.array(x).shape[1], np.array(x).shape
-    print f
-    print x
     indx = np.argmin(f)
     f = f[indx]
     x = x[..., indx]
@@ -155,7 +175,6 @@ def hanso(func, grad, sampgrad=False, normtol=1e-6, verbose=2,
     G = G[indx]
     w = w[indx]
 
-    print f
     dnorm = numpy.linalg.norm(d, 2)
     # the 2nd argument will not be used since x == X(:,1) after bfgs
     loc, X, G, w = postprocess(x, np.nan, dnorm, X, G, w, verbose=verbose)
@@ -184,14 +203,54 @@ def hanso(func, grad, sampgrad=False, normtol=1e-6, verbose=2,
              'measure: dnorm = %5.1e, evaldist = %5.1e' % (
                 f, loc['dnorm'], loc['evaldist']))
         return x, f, loc, X, G, w, H
-    elif not sampgrad:
-        return x, f, loc, X, G, w, H
-    else:
-        # gradient-sampling stage: i'm to0 lazie to implement the
-        # gradient-sampling right now ;)
-        if sampgrad:
-            raise NotImplementedError(
-                'Gradient-Sampling trick not yet implemented!')
+
+    if sampgrad:
+        # launch gradient sampling
+        f_BFGS = f
+        # save optimality certificate info in case gradient sampling cannot
+        # improve the one provided by BFGS
+        dnorm_BFGS = dnorm
+        loc_BFGS = loc
+        d_BFGS = d
+        X_BFGS = X
+        G_BFGS = G
+        w_BFGS = w
+        x0 = x.reshape((-1, 1))
+
+        # otherwise gradient sampling is too expensivea
+        if maxit > 100:
+            maxit = 100
+
+        # otherwise grad sampling will augment with random starts
+        # nstart = 1
+
+        cpumax = cpufinish - time.time()  # time left
+
+        # run gradsamp proper
+        x, f, g, dnorm, X, G, w = gradsamp(func, grad, x0, maxit,
+                                           cpumax=cpumax)
+
+        if f == f_BFGS:  # gradient sampling did not reduce f
+            _log('hanso: gradient sampling did not reduce f below best point'
+                 ' found by BFGS\n')
+            # use the better optimality certificate
+            if dnorm > dnorm_BFGS:
+                loc = loc_BFGS
+                d = d_BFGS
+                X = X_BFGS
+                G = G_BFGS
+                w = w_BFGS
+        elif f < f_BFGS:
+            loc, X, G, w = postprocess(x, g, dnorm, X, G, w)
+            _log('hanso: gradient sampling reduced f below best point found'
+                 ' by BFGS\n')
+        else:
+            raise RuntimeError(
+                'hanso: f > f_BFGS: this should never happen'
+                )  # this should never happen
+
+    return x, f, loc, X, G, w, H
+
 
 if __name__ == '__main__':
     func_names = [
@@ -221,19 +280,22 @@ if __name__ == '__main__':
             from example_functions import (nesterov as func,
                                            grad_nesterov as grad)
 
-        func_name = func_name + " in %i dimensions" % nvar
-        print "Running HANSO for %s ..." % func_name
-
         import scipy.io
         x0 = scipy.io.loadmat("/tmp/x0.mat", squeeze_me=True,
                               struct_as_record=False)['x0']
         if x0.ndim == 1:
             x0 = x0.reshape((-1, 1), order='F')
 
+        nvar, nstart = x0.shape
+
+        func_name = func_name + " in %i dimensions" % nvar
+        print "Running HANSO for %s ..." % func_name
+
         for strongwolfe in wolfe_kinds:
             # run BFGS
             x, f = hanso(func, grad,
                          x0=x0,
+                         sampgrad=True,
                          # nvar=nvar, nstart=nstart,
                          strongwolfe=strongwolfe,
                          maxit=10,
@@ -246,7 +308,7 @@ if __name__ == '__main__':
                          nvec=0,
                          scale=1,
                          evaldist=1e-6,
-                         verbose=0
+                         verbose=2
                          )[:2]
             print "xopt:", x
             print "fmin:", f

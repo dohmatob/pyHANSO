@@ -106,10 +106,15 @@ def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
             return x, f, g, dnorm, X, G, w, quitall
 
     _log('  %d iters reached, f = %g, dnorm = %5.1e' % (maxit, f, dnorm))
-    return x, f, g, dnorm, X, G, w, quitall
+    return x, f, g, dnorm, np.array(X), np.array(G), w, quitall
 
 
 if __name__ == '__main__':
     from example_functions import (l1 as func,
                                    gradl1 as grad)
-    print gradsampfixed(func, grad, [1e-6, -1e-6])[-1]
+    x, f, g, dnorm, X, G, w, quitall = gradsampfixed(func, grad,
+                                                     [1e-6, -1e-6])
+    print "fmin:", f
+    print "xopt:", x
+    assert X.shape[0] == 2
+    assert G.shape[0] == 2
