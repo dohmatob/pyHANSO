@@ -14,7 +14,7 @@ from postprocess import postprocess
 
 def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
           normtol=1e-6, verbose=2, fvalquit=-np.inf, cpumax=np.inf,
-          maxit=100, **kwargs):
+          maxit=100,  **kwargs):
     """
     HANSO: Hybrid Algorithm for Nonsmooth Optimization
 
@@ -157,16 +157,18 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
             "Value specified for x0, expecting no value for nstart")
 
         x0 = np.array(x0)
+        if x0.ndim == 1:
+            x0 = x0.reshape((-1, 1))
+
         nvar, nstart = x0.shape
 
     cpufinish = time.time() + cpumax
 
     # run BFGS step
     kwargs['output_records'] = 1
-    x, f, d, H, it, info, X, G, w = bfgs(func, grad, x0=x0, fvalquit=fvalquit,
-                                         normtol=normtol, cpumax=cpumax,
-                                         maxit=maxit,
-                                         verbose=verbose, **kwargs)
+    x, f, d, H, _, info, X, G, w, pobj = bfgs(
+        func, grad, x0=x0, fvalquit=fvalquit, normtol=normtol, cpumax=cpumax,
+        maxit=maxit, verbose=verbose, **kwargs)
 
     # throw away all but the best result
     assert len(f) == np.array(x).shape[1], np.array(x).shape
@@ -178,6 +180,7 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
     X = X[indx]
     G = G[indx]
     w = w[indx]
+    pobj = pobj[indx]
 
     dnorm = numpy.linalg.norm(d, 2)
     # the 2nd argument will not be used since x == X(:,1) after bfgs
@@ -185,31 +188,32 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
 
     if np.isnan(f) or np.isinf(f):
         _log('hanso: f is infinite or nan at all starting points')
-        return x, f, loc, X, G, w, H
+        return x, f, loc, X, G, w, H, pobj
 
     if time.time() > cpufinish:
         _log('hanso: cpu time limit exceeded')
         _log('hanso: best point found has f = %g with local optimality '
              'measure: dnorm = %5.1e, evaldist = %5.1e' % (
                 f, loc['dnorm'], loc['evaldist']))
-        return x, f, loc, X, G, w, H
+        return x, f, loc, X, G, w, H, pobj
 
     if f < fvalquit:
         _log('hanso: reached target objective')
         _log('hanso: best point found has f = %g with local optimality'
              ' measure: dnorm = %5.1e, evaldist = %5.1e' % (
                 f, loc['dnorm'], loc['evaldist']))
-        return x, f, loc, X, G, w, H
+        return x, f, loc, X, G, w, H, pobj
 
     if dnorm < normtol:
         _log('hanso: verified optimality within tolerance in bfgs phase')
         _log('hanso: best point found has f = %g with local optimality '
              'measure: dnorm = %5.1e, evaldist = %5.1e' % (
                 f, loc['dnorm'], loc['evaldist']))
-        return x, f, loc, X, G, w, H
+        return x, f, loc, X, G, w, H, pobj
 
     if sampgrad:
         # launch gradient sampling
+        time0 = time.time()
         f_BFGS = f
         # save optimality certificate info in case gradient sampling cannot
         # improve the one provided by BFGS
@@ -254,9 +258,12 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
                 'hanso: f > f_BFGS: this should never happen'
                 )  # this should never happen
 
-        return x[0], f[0], loc, X, G, w, H
+        x = x[0]
+        f = f[0]
+        pobj.append((time.time() - time0, f))
+        return x, f, loc, X, G, w, H, pobj
     else:
-        return x, f, loc, X, G, w, H
+        return x, f, loc, X, G, w, H, pobj
 
 
 if __name__ == '__main__':

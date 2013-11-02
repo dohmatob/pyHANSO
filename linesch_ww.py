@@ -9,7 +9,7 @@ import numpy.linalg
 
 
 def linesch_ww(x0, func, grad, d, func0=None, grad0=None, wolfe1=0, wolfe2=.5,
-               fvalquit=-np.inf, verbose=1, **kwargs):
+               fvalquit=-np.inf, verbose=1):
     """
     LINESCH_WW Line search enforcing weak Wolfe conditions, suitable
     for minimizing both smooth and nonsmooth functions
@@ -176,7 +176,7 @@ def linesch_ww(x0, func, grad, d, func0=None, grad0=None, wolfe1=0, wolfe2=.5,
     while not done:
         x = x0 + t * d
         nfeval = nfeval + 1
-        f, g = func(x, **kwargs), grad(x, **kwargs)
+        f, g = func(x), grad(x)
         fevalrec.append(f)
         if f < fvalquit:  # nothing more to do, quit
             fail = 0

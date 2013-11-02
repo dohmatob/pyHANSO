@@ -13,8 +13,7 @@ from setx0 import setx0
 def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
          verbose=1, normtol=1e-6, fvalquit=-np.inf, xnormquit=np.inf,
          cpumax=np.inf, strongwolfe=False, wolfe1=0, wolfe2=.5, quitLSfail=1,
-         ngrad=None, evaldist=1e-6, H0=None, scale=1, output_records=2,
-         **kwargs
+         ngrad=None, evaldist=1e-6, H0=None, scale=1, output_records=2
          ):
     """
     Make a single run of BFGS from one starting point. Intended to be
@@ -45,6 +44,33 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
 
     wolfe2: float, optional (default .5)
         param passed to bfgs1run function
+
+    normtol: float, optional (default 1e-6)
+        termination tolerance on d: smallest vector in convex hull of up
+        to ngrad gradients
+
+    xnormquit: float, optional (default inf)
+        quit if norm(x) exceeds this value
+
+    evaldist: float, optional default (1e-4)
+        the gradients used in the termination test qualify only if
+        they are evaluated at points  approximately  within
+        distance evaldist of x
+
+    H0: 2D array of shape (nvar, nvar), optional (default identity matrix)
+        for full BFGS: initial inverse Hessian approximation (must be
+        positive definite, but this is not checked), this could be draw
+        drawn from a Wishart distribution;
+        for limited memory BFGS: same, but applied every iteration
+        (must be sparse in this case)
+
+    scale: boolean, optional (default True)
+        for full BFGS: 1 to scale H0 at first iteration, 0 otherwise
+        for limited memory BFGS: 1 to scale H0 every time, 0 otherwise
+
+    cpumax: float, optional (default inf)
+        quit if cpu time in secs exceeds this (applies to total running
+        time)
 
     fvalquit: float, optional (default -inf)
         param passed to bfgs1run function
@@ -161,9 +187,13 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
             "Value specified for x0, expecting no value for nstart")
 
         x0 = np.array(x0)
+        if x0.ndim == 1:
+            x0 = x0.reshape((-1, 1))
+
         nvar, nstart = x0.shape
 
     cpufinish = time.time() + cpumax
+    pobj = []
     _f = []
     itrecs = []
     inforecs = []
@@ -184,12 +214,13 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
             _log('bfgs: starting point %d' % (run + 1))
         cpumax = cpufinish - time.time()
         if output_records > 1:
-            x, f, d, HH, it, info, X, G, w, fevalrec, xrec, Hrec = bfgs1run(
-                x0[..., run], func, grad, maxit=maxit, wolfe1=wolfe1,
-                wolfe2=wolfe2, normtol=normtol, fvalquit=fvalquit,
-                xnormquit=xnormquit, cpumax=cpumax, strongwolfe=strongwolfe,
-                verbose=verbose, quitLSfail=quitLSfail, ngrad=ngrad,
-                evaldist=evaldist, H0=H0, scale=scale)
+            x, f, d, HH, it, info, X, G, w, fevalrec, xrec, Hrec, times = \
+                bfgs1run(x0[..., run], func, grad, maxit=maxit, wolfe1=wolfe1,
+                         wolfe2=wolfe2, normtol=normtol, fvalquit=fvalquit,
+                         xnormquit=xnormquit, cpumax=cpumax,
+                         strongwolfe=strongwolfe, verbose=verbose,
+                         quitLSfail=quitLSfail, ngrad=ngrad, evaldist=evaldist,
+                         H0=H0, scale=scale)
             _x.append(x)
             _f.append(x)
             _d.append(d)
@@ -202,7 +233,7 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
             xrecs.append(xrec)
             Hrecs.append(Hrec)
         elif output_records > 0:
-            x, f, d, HH, it, info, X, G, w, _, _, _ = bfgs1run(
+            x, f, d, HH, it, info, X, G, w, _, _, _, times = bfgs1run(
                 x0[..., run], func, grad, maxit=maxit, wolfe1=wolfe1,
                 wolfe2=wolfe2, normtol=normtol, fvalquit=fvalquit,
                 xnormquit=xnormquit, cpumax=cpumax, strongwolfe=strongwolfe,
@@ -217,7 +248,7 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
             Grecs.append(G)
             wrecs.append(w)
         else:  # avoid computing unnecessary arrays
-            x, f, d, HH, it, info, _, _, _, _, _, _ = bfgs1run(
+            x, f, d, HH, it, info, _, _, _, _, _, _, times = bfgs1run(
                 x0[..., run], func, grad, maxit=maxit, wolfe1=wolfe1,
                 wolfe2=wolfe2, normtol=normtol, fvalquit=fvalquit,
                 xnormquit=xnormquit, cpumax=cpumax, strongwolfe=strongwolfe,
@@ -234,9 +265,18 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
 
         # HH should be exactly symmetric as of version 2.02, but does no harm
         _H.append((HH + HH.T) / 2.)
+
+        # check that we'ven't exploded the time budget
         if time.time() > cpufinish or f < fvalquit or numpy.linalg.norm(
             x, 2) > xnormquit:
             break
+
+        # commit times
+        run_pobj = []
+        for duration, f in times:
+            run_pobj.append((duration, f))
+        pobj.append(run_pobj)
+    # end of for loop
 
     # we're done: now collect and return outputs to caller
     _x = np.array(_x).T
@@ -244,11 +284,11 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
     _d = np.array(_d).T
     if output_records > 1:
         return (_x, _f, _d, _H, itrecs, inforecs, Xrecs, Grecs, wrecs,
-                fevalrecs, xrecs, Hrecs)
+                fevalrecs, xrecs, Hrecs, pobj)
     elif output_records > 0:
-        return _x, _f, _d, _H, itrecs, inforecs, Xrecs, Grecs, wrecs
+        return _x, _f, _d, _H, itrecs, inforecs, Xrecs, Grecs, wrecs, pobj
     else:
-        return _x, _f, _d, _H, itrecs, inforecs
+        return _x, _f, _d, _H, itrecs, inforecs, pobj
 
 
 if __name__ == '__main__':
@@ -258,7 +298,7 @@ if __name__ == '__main__':
         'Nesterov',
         'Rosenbrock "banana"',
         'l1-norm',
-        'l2-norm',
+        'l2-norm'
         ]
     wolfe_kinds = [0,  # weak
                    # 1 # strong
@@ -287,7 +327,7 @@ if __name__ == '__main__':
                              strongwolfe=strongwolfe,
                              maxit=10,
                              verbose=2
-                             )[-3]
+                             )[-4]
 
             # plot results
             ax = plt.subplot2grid((len(func_names), len(wolfe_kinds)),

@@ -17,7 +17,7 @@ from linesch_ww import linesch_ww
 def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
              fvalquit=-np.inf, xnormquit=np.inf, cpumax=np.inf,
              strongwolfe=False, wolfe1=0, wolfe2=.5, quitLSfail=1, ngrad=None,
-             evaldist=1e-4, H0=None, scale=1, **kwargs):
+             evaldist=1e-4, H0=None, scale=1):
     """
     Make a single run of BFGS (with inexact line search) from one starting
     point. Intended to be called from bfgs.
@@ -45,8 +45,42 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
     wolfe2: float, optional (default .5)
         param passed to linesch_ww[sw] function
 
+    strongwolfe: boolean, optional (default 1)
+        0 for weak Wolfe line search (default)
+        1 for strong Wolfe line search
+        Strong Wolfe line search is not recommended for use with
+        BFGS; it is very complicated and bad if f is nonsmooth;
+        however, it can be useful to simulate an exact line search
+
     fvalquit: float, optional (default -inf)
         param passed to bfgs1run function
+
+    normtol: float, optional (default 1e-6)
+        termination tolerance on d: smallest vector in convex hull of up
+        to ngrad gradients
+
+    xnormquit: float, optional (default inf)
+        quit if norm(x) exceeds this value
+
+    evaldist: float, optional default (1e-4)
+        the gradients used in the termination test qualify only if
+        they are evaluated at points  approximately  within
+        distance evaldist of x
+
+    H0: 2D array of shape (nvar, nvar), optional (default identity matrix)
+        for full BFGS: initial inverse Hessian approximation (must be
+        positive definite, but this is not checked), this could be draw
+        drawn from a Wishart distribution;
+        for limited memory BFGS: same, but applied every iteration
+        (must be sparse in this case)
+
+    scale: boolean, optional (default True)
+        for full BFGS: 1 to scale H0 at first iteration, 0 otherwise
+        for limited memory BFGS: 1 to scale H0 every time, 0 otherwise
+
+    cpumax: float, optional (default inf)
+        quit if cpu time in secs exceeds this (applies to total running
+        time)
 
     verbose: int, optional (default 1)
         param passed to bfgs1run function
@@ -107,6 +141,9 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
     Hrec: 2D array of shape (iter, nvar)
        record of H (Hessian) iterates
 
+    times: list of floats
+        time consumed in each iteration
+
     Raises
     ------
     ImportError
@@ -117,12 +154,15 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
         if verbose > level:
             print msg
 
+    # sanitize input
     x0 = np.array(x0).ravel()
     nvar = np.prod(x0.shape)
     H0 = np.eye(nvar) if H0 is None else H0
     ngrad = min(100, min(2 * nvar, nvar + 10)) if ngrad is None else ngrad
     x = np.array(x0)
     H = np.array(H0)
+
+    # initialize auxiliary variables
     S = []
     Y = []
     xrec = []
@@ -131,22 +171,30 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
     X = np.array([x]).T
     nG = 1
     w = 1
-    cpufinish = time.time() + cpumax
 
-    f, g = func(x, **kwargs), grad(x, **kwargs)
+    # prepare for timing
+    cpufinish = time.time() + cpumax
+    times = []
+    time0 = time.time()
+
+    # first evaluation
+    f, g = func(x), grad(x)
+    times.append((time.time() - time0, f))
+
+    # check that all is still well
     d = np.array(g)
     G = np.array([g]).T
     if np.isnan(f) or np.isinf(f):
         _log('bfgs1run: f is infinite or nan at initial iterate')
         info = 5
-        return  x, f, d, H, 0, info, X, G, w, fevalrec, xrec, Hrec
+        return  x, f, d, H, 0, info, X, G, w, fevalrec, xrec, Hrec, times
     if np.any(np.isnan(g)) or np.any(np.isinf(g)):
         _log('bfgs1run: grad is infinite or nan at initial iterate')
         info = 5
-        return  x, f, d, H, 0, info, X, G, w, fevalrec, xrec, Hrec
+        return  x, f, d, H, 0, info, X, G, w, fevalrec, xrec, Hrec, times
 
-    dnorm = numpy.linalg.norm(g, 2)
     # enter: main loop
+    dnorm = numpy.linalg.norm(g, 2)  # initialize dnorm stopping creteria
     for it in xrange(maxit):
         p = -np.dot(H, g) if nvec == 0 else -hgprod(H, g, S, Y)
         gtp = np.dot(g.T, p)
@@ -156,7 +204,8 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
                 'iteration(s), f = %g, dnorm = %5.1e, gtp=%s' % (
                     it + 1, f, dnorm, gtp))
             info = 6
-            return x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec
+            times.append((time.time() - time0, f))
+            return x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
 
         gprev = np.array(g)  # for BFGS update
         if strongwolfe:
@@ -174,7 +223,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
 
             alpha, x, f, g, fail, _, _, fevalrecline = linesch_sw(
                 x, func, grad, p, wolfe1=wolfe1, wolfe2=wolfe2,
-                fvalquit=fvalquit, verbose=verbose, **kwargs)
+                fvalquit=fvalquit, verbose=verbose)
 
             # function values are not returned in strongwolfe, so set
             # fevalrecline to nan
@@ -189,12 +238,12 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
                 _log(' exact line sch simulation: slightly increasing step '
                      'from %g to %g' % (alpha, alpha + increase), level=1)
 
-                f, g = func(x, **kwargs), grad(x, **kwargs)
+                f, g = func(x, **kwargs), grad(x)
         else:
             _log("Starting inexact line search (weak Wolfe) ...")
             alpha, x, f, g, fail, _, _, fevalrecline = linesch_ww(
                 x, func, grad, p, wolfe1=wolfe1, wolfe2=wolfe2,
-                fvalquit=fvalquit, verbose=verbose, **kwargs)
+                fvalquit=fvalquit, verbose=verbose)
             _log("... done.")
 
         # for the optimal check: discard the saved gradients iff the
@@ -245,13 +294,16 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
             _log('bfgs1run: reached target objective, quitting after'
                  ' %d iteration(s)' % (it + 1))
             info = 2
-            return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec
+            times.append((time.time() - time0, f))
+            return x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
+
         # this is not checked inside the line search
         elif numpy.linalg.norm(x, 2) > xnormquit:
             _log('bfgs1run: norm(x) exceeds specified limit, quitting after'
                  ' %d iteration(s)' % (it + 1))
             info = 3
-            return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec
+            times.append(time.time() - time0, f)
+            return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
 
         # line search failed (Wolfe conditions not both satisfied)
         if fail == 1:
@@ -262,13 +314,16 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
                 _log('bfgs1run: quitting after %d iteration(s), f = %g, '
                      'dnorm = %5.1e' % (it + 1, f, dnorm))
                 info = 7
-                return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec
-
-        # function apparently unbounded below
+                times.append((time.time() - time0, f))
+                return  (x, f, d, H, it, info, X, G, w, fevalrec, xrec,
+                         Hrec, times)
+ 
+       # function apparently unbounded below
         elif fail == -1:
             _log('bfgs1run: f may be unbounded below, quitting after %d '
                  'iteration(s), f = %g' % (it + 1, f))
             info = 8
+            times.append((time.time() - time0, f))
             return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec
 
         if dnorm <= normtol:
@@ -281,13 +336,15 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
                     ' gradients below tolerance, quitting after '
                     '%d iteration(s), f = %g' % (it + 1, f))
             info = 0
-            return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec
+            times.append((time.time() - time0, f))
+            return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
 
         if time.time() > cpufinish:
             _log('bfgs1run: cpu time limit exceeded, quitting after %d '
                  'iteration(s) %d' % (it + 1))
             info = 4
-            return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec
+            times.append((time.time() - time0, f))
+            return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
         s = (alpha * p).reshape((-1, 1))
         y = g - gprev
         sty = np.dot(s.T, y)  # successful line search ensures this is positive
@@ -338,13 +395,15 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
             if scale:
                 # recommended by Nocedal-Wright
                 H = np.dot(np.dot(s.T, y), np.dot(np.dot(y.T, y), H0))
+
+        times.append((time.time() - time0, f))
     # end of 'for loop'
 
     _log('bfgs1run: %d iteration(s) reached, f = %g, dnorm = %5.1e' % (
             maxit, f, dnorm))
 
     info = 1  # quit since max iterations reached
-    return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec
+    return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
 
 if __name__ == '__main__':
     nvar = 20

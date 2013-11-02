@@ -77,9 +77,13 @@ def getbundle(func, grad, x0, g0=None, samprad=1e-4, n=None):
 
 
 if __name__ == '__main__':
+    import matplotlib.pyplot as plt
     from example_functions import (l1 as func,
                                    gradl1 as grad)
-    xbundle, gbundle = getbundle(func, grad, [1e-6, -1e-6], samprad=1, n=100)
-    import matplotlib.pyplot as plt
+
+    _, gbundle = getbundle(func, grad, [1e-6, -1e-6], n=100)
     plt.scatter(*gbundle)
+    plt.title("Bundle of gradients around the origin for the l1-norm")
+    plt.xlabel("gradient w.r.t x1")
+    plt.ylabel("gradient w.r.t x2")
     plt.show()

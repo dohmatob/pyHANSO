@@ -2,6 +2,8 @@ import time
 from math import sqrt
 import numpy as np
 from scipy import linalg, signal
+import pylab as pl
+from example_functions import l1, gradl1
 
 rng = np.random.RandomState(42)
 m, n, k = 100, 300, 10
@@ -19,6 +21,15 @@ x0 = rng.rand(n)
 x0[x0 < 0.3] = 0
 b = np.dot(A, x0)
 l = 0.01
+
+
+def loss_function(A, b, lambd, x):
+    """
+    Frobenius + l1
+
+    """
+
+    return .5 * linalg.norm(np.dot(A, x) - b) ** 2 + lambd * l1(x)
 
 
 def soft_thresh(x, l):
@@ -60,46 +71,109 @@ def fista(A, b, l, maxit):
     return x, pobj, times
 
 
-def hanso(A, b, lambd, maxit):
-    from hanso import hanso
-    from example_functions import l1, gradl1
+def hanso(A, b, lambd, maxit, x0_init="random"):
+    """
+    Runs a flovor HANSO (customizable via the x0_init parameter).
 
-    nstart = 200
+    Parameters
+    ----------
+    x0_init: string, optional (defautl "random")
+        initialization mode for HANSO: Possible values are:
+        "soft_thresh_ista": initialize as if ISTA
+        "soft_thresh_fista": initialize as if FISTA
+        "random": initialize as usual (multivariate standard normal)
+
+    Raises
+    ------
+    ValueError
+
+    """
+
+    from hanso import hanso
+    from setx0 import setx0
+
+    nstart = 1  # 20
 
     def func(x):
-        z = np.dot(A, x) - b
-        return .5 * np.dot(z.T, z) + lambd * l1(x)
+        return loss_function(A, b, lambd, x)
 
     def grad(x):
         return np.dot(A.T, np.dot(A, x) - b) + lambd * gradl1(x)
 
-    x, f = hanso(func, grad,
-                 nvar=A.shape[1],
-                 nstart=nstart,
-                 sampgrad=True,
-                 maxit=maxit // nstart,
-                 verbose=2,
-                 nvec=1
-                 )[:2]
-    import pylab as pl
-    print "xopt:", x
-    print "fmin:", f
-    pl.plot(np.array([x, x0]).T, '*-')
-    pl.show()
+    if x0_init == "soft_thresh_ista":
+        x0 = np.zeros(A.shape[1])
+        L = linalg.norm(A) ** 2
+        x0 = soft_thresh(x0 + np.dot(A.T, b - np.dot(A, x0)) / L,
+                         l / L)
+    elif x0_init == "soft_thresh_fista":
+        x0 = np.zeros(A.shape[1])
+        L = linalg.norm(A) ** 2
+        x0 = np.zeros(A.shape[1])
+        x0 = x0 + np.dot(A.T, b - A.dot(x0)) / L
+        x0 = soft_thresh(x0, l / L)
+    elif x0_init == "random":
+        x0 = setx0(A.shape[1], nstart)
+    else:
+        raise ValueError("Unknown value for x0_init parameter: %s" % x0_init)
+
+    results = hanso(func, grad,
+                    x0=x0,
+                    sampgrad=True,
+                    maxit=maxit,
+                    nvec=1,
+
+                    # tolerance threshold for l2-norm of gradient
+                    normtol=2 * 1e-3,
+
+                    verbose=2,
+                    )
+    x0 = results[0]
+    pobj = results[-1]
+
+    times, pobj = map(np.array, zip(*pobj))
+    return x0, pobj, times
+
+    # import pylab as pl
+    # print "xopt:", x
+    # print "fmin:", f
+    # pl.plot(np.array([x, x0]).T, '*-')
+    # pl.legend(("xopt from HANSO", "True x"))
+    # pl.show()
 
 
-import pylab as pl
 maxit = 100000
-hanso(A, b, l, maxit)
+
+# HANSO
+hanso_x0_init_modes = ['random', 'soft_thresh_ista', 'soft_thresh_fista']
+pobj_hanso = []
+times_hanso = []
+for x0_init in hanso_x0_init_modes:
+    optimizer = "HANSO (%s x0 init)" % x0_init
+    x_hanso, pobj, times = hanso(A, b, l, maxit, x0_init=x0_init)
+    pobj_hanso.append(pobj)
+    times_hanso.append(times)
+    print "xopt %s: %s" % (optimizer, x_hanso)
+    print "fmin %s: %s" % (optimizer, loss_function(A, b, l, x_hanso))
+    print
+
+# ISTA
 x_ista, pobj_ista, times_ista = ista(A, b, l, maxit)
-print x_ista
-pl.plot(np.array([x_ista, x0]).T, '*-')
-pl.show()
+print "xopt ISTA:", x_ista
+print "fmin ISTA:", loss_function(A, b, l, x_ista)
+print
 
+# FISTA
 x_fista, pobj_fista, times_fista = fista(A, b, l, maxit)
-print x_fista
+print "xopt FISTA:", x_fista
+print "fmin FISTA:", loss_function(A, b, l, x_fista)
+print
 
+# plot results
 pl.close('all')
+for x0_init, times, pobj in zip(hanso_x0_init_modes,
+                                times_hanso, pobj_hanso):
+    optimizer = "HANSO (%s x0 init)" % x0_init
+    pl.plot(times, pobj, label=optimizer)
 pl.plot(times_ista, pobj_ista, label='ista')
 pl.plot(times_fista, pobj_fista, label='fista')
 pl.xlabel('Time')

@@ -3,6 +3,11 @@ import numpy.linalg
 
 
 def l2(x):
+    """
+    l2-norm squared
+
+    """
+
     return .5 * numpy.linalg.norm(x, 2) ** 2
 
 
@@ -11,6 +16,11 @@ def gradl2(x):
 
 
 def l1(x):
+    """
+    l1-norm
+
+    """
+
     return 1. * numpy.linalg.norm(x, 1)
 
 
