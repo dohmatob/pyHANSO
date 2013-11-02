@@ -23,10 +23,18 @@ elif design.lower() == "convolutional":
 else:
     raise ValueError("Unknown design: %s" % design)
 
+# l1-sparse betamap
 x0 = rng.rand(n)
 x0[x0 < 0.3] = 0
-b = np.dot(A, x0)
 l = 0.01
+
+# tv-sparse betamap
+if penalty_model == "tv":
+    import scipy.signal
+    x0 = scipy.signal.waveforms.square(rng.randn(n))
+
+# observed signal
+b = np.dot(A, x0)
 
 
 def unpenalized_loss_func(A, b, lambd, x):
@@ -177,11 +185,7 @@ def hanso(A, b, lambd, maxit, x0_init="random"):
                     x0=x0,
                     sampgrad=True,
                     maxit=maxit,
-
-                    # tolerance threshold for l2-norm of gradient
-                    normtol=2 * 1e-3,
-
-                    verbose=2,
+                    verbose=2
                     )
     x0 = results[0]
     pobj = results[-1]
@@ -193,7 +197,11 @@ def hanso(A, b, lambd, maxit, x0_init="random"):
 maxit = 1000  # 100000
 
 # HANSO
-hanso_x0_init_modes = ['random', 'soft_thresh_ista', 'soft_thresh_fista']
+hanso_x0_init_modes = [
+    'random',
+    'soft_thresh_ista',
+    'soft_thresh_fista'
+    ]
 pobj_hanso = []
 times_hanso = []
 for x0_init in hanso_x0_init_modes:
@@ -244,8 +252,8 @@ pl.title(("Linear regression on %s design with %s penalty model "
 pl.figure()
 pl.plot(x0, 'o-', label='True betamap')
 pl.plot(x_hanso, 's-', label='HANSO estimated betamap')
-# pl.plot(x_ista, '*-', label='ISTA estimated betamap')
-# pl.plot(x_fista, '^-', label='FISTA estimated betamap')
+pl.plot(x_ista, '*-', label='ISTA estimated betamap')
+pl.plot(x_fista, '^-', label='FISTA estimated betamap')
 pl.ylabel("beta values (i.e regression coffients)")
 pl.xlabel("conditions (index with nonnegative integers)")
 pl.legend()

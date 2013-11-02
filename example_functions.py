@@ -93,8 +93,8 @@ def grad_tv(x):
     diff2 = diff1[(index_mask - 1) % n]  # unit rightward shift of gradient
 
     # regularize a lil' bit (this can save lives!)
-    diff1 += 1e-10
-    diff2 += 1e-10
+    diff1 += 1e-30 * np.random.randn()
+    diff2 += 1e-30 * np.random.randn()
 
     # finally
     return (0 < index_mask  # all but first index
