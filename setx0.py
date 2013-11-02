@@ -15,6 +15,10 @@ def setx0(nvar, nstart, **kwargs):
     x0: 2D array of shape (nvar, nstart)
         Starting point for BFGS; one point percolumn
 
+   Raises
+   ------
+   RuntimeError
+
    """
 
     if not nstart > 0:

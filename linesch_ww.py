@@ -121,6 +121,10 @@ def linesch_ww(x0, func, grad, d, func0=None, grad0=None, wolfe1=0, wolfe2=.5,
     fevalrec: list
         record of function evaluations
 
+    Raises
+    ------
+    RuntimeError
+
     """
 
     def _log(msg, level=0):

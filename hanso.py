@@ -22,14 +22,14 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
     BFGS phase: BFGS is run from multiple starting points, taken from
     the columns of x0 parameter, if provided, and otherwise 10 points
     generated randomly. If the termination test was satisfied at the
-    best point found by BFGS, or if pars.nvar > 100, HANSO terminates;
+    best point found by BFGS, or if nvar > 100, HANSO terminates;
     otherwise, it continues to:
 
     Gradient sampling phases: 3 gradient sampling phases are run from
     lowest point found, using sampling radii:
-    10*options.evaldist, options.evaldist, options.evaldist/10
+    10*evaldist, evaldist, evaldist/10
     Termination takes place immediately during any phase if
-    options.cpumax CPU time is exceeded.
+    cpumax CPU time is exceeded.
 
     References
     ----------
@@ -130,6 +130,10 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
     Hrecs: list of nstart 2D arrays, each of shape (iter, nvar)
        record of H (Hessian) iterates; one array per run of bfgs1run;
        see bfgs1run for details
+
+    Raises
+    ------
+    RuntimeError
 
     """
 

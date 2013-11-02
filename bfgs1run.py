@@ -107,6 +107,10 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
     Hrec: 2D array of shape (iter, nvar)
        record of H (Hessian) iterates
 
+    Raises
+    ------
+    ImportError
+
     """
 
     def _log(msg, level=0):

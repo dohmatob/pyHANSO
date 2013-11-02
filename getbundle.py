@@ -40,6 +40,10 @@ def getbundle(func, grad, x0, g0=None, samprad=1e-4, n=None):
     xbundle: 2D array of shape (nvar, n)
         bundle of n gradients sampled in the samprand-ball around x0
 
+    Raises
+    ------
+    RuntimeError
+
     """
 
     x0 = np.ravel(x0)
