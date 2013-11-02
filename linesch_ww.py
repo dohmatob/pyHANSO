@@ -1,6 +1,6 @@
 """
 :Synopsis: Python implementation of linesch_ww.m (HANSO)
-Author: DOHMATOB Elvis Dopgima
+:Author: DOHMATOB Elvis Dopgima <gmdopp@gmail.com> <elvis.dohmatob@inria.fr>
 
 """
 

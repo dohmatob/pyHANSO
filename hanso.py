@@ -1,5 +1,5 @@
 """
-:Author: DOHMATOB Elvis Dopgima
+:Author: DOHMATOB Elvis Dopgima <gmdopp@gmail.com> <elvis.dohmatob@inria.fr>
 
 """
 
@@ -250,7 +250,9 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
                 'hanso: f > f_BFGS: this should never happen'
                 )  # this should never happen
 
-    return x, f, loc, X, G, w, H
+        return x[0], f[0], loc, X, G, w, H
+    else:
+        return x, f, loc, X, G, w, H
 
 
 if __name__ == '__main__':
@@ -259,9 +261,9 @@ if __name__ == '__main__':
     from setx0 import setx0
     func_names = [
         # 'Nesterov',
-         'Rosenbrock "banana"',
-        # 'l1-norm',
-        # 'l2-norm'  # this is smooth and convex, we're only being ironic here
+        # 'Rosenbrock "banana"',
+        # 'l2-norm',  # this is smooth and convex, we're only being ironic here
+        'l1-norm',
         ]
     wolfe_kinds = [0,  # weak
                    # 1 # strong

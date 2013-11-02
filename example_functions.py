@@ -3,11 +3,11 @@ import numpy.linalg
 
 
 def l2(x):
-    return numpy.linalg.norm(x, 2)
+    return .5 * numpy.linalg.norm(x, 2) ** 2
 
 
 def gradl2(x):
-    return 2 * (x)
+    return x
 
 
 def l1(x):

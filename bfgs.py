@@ -1,3 +1,8 @@
+"""
+:Author: DOHMATOB Elvis Dopgima <gmdopp@gmail.com> <elvis.dohmatob@inria.fr>
+
+"""
+
 import time
 import numpy as np
 import numpy.linalg
@@ -68,14 +73,14 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
     x: D array of same length nvar = len(x0)
         final iterate
 
-    _f: list of nstart floats
+    f: list of nstart floats
         final function values, one per run of bfgs1run
 
-    _d: list of nstart 1D arrays, each of same length as input nvar
+    d: list of nstart 1D arrays, each of same length as input nvar
        final smallest vectors in convex hull of saved gradients,
        one array per run of bfgs1run
 
-    _H: list of nstarts 2D arrays, each of shape (nvar, nvar)
+    H: list of nstarts 2D arrays, each of shape (nvar, nvar)
        final inverse Hessian approximations, one array per run of bfgs1run
 
     itrecs: list of nstart int
@@ -109,6 +114,26 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
     Hrecs: list of nstart 2D arrays, each of shape (iter, nvar)
        record of H (Hessian) iterates; one array per run of bfgs1run;
        see bfgs1run for details
+
+    Notes
+    -----
+    if there is more than one starting vector, then:
+    f, iter, info are vectors of length nstart
+    x, d are matrices of size pars.nvar by nstart
+    H, X, G, w, xrec, Hrec are cell arrays of length nstart, and
+    fevalrec is a cell array of cell arrays
+    Thus, for example, d[:,i] = G[i] * w[i], for i = 0,...,nstart - 1
+
+    BFGS is normally used for optimizing smooth, not necessarily convex,
+    functions, for which the convergence rate is generically superlinear.
+    But it also works very well for functions that are nonsmooth at their
+    minimizers, typically with a linear convergence rate and a final
+    inverse Hessian approximation that is very ill conditioned, as long
+    as a weak Wolfe line search is used. This version of BFGS will work
+    well both for smooth and nonsmooth functions and has a stopping
+    criterion that applies for both cases, described above.
+    Reference:  A.S. Lewis and M.L. Overton, Nonsmooth Optimization via
+    Quasi-Newton Methods, Math Programming, 2012
 
     See Also
     --------

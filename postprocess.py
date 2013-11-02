@@ -1,3 +1,8 @@
+"""
+:Author: DOHMATOB Elvis Dopgima <gmdopp@gmail.com> <elvis.dohmatob@inria.fr>
+
+"""
+
 import numpy as np
 import numpy.linalg
 from qpspecial import qpspecial
@@ -38,8 +43,6 @@ def postprocess(x, g, dnorm, X, G, w, verbose=1):
         # prepend x to X and g to G and recompute w
         X = np.vstack((x, X.T)).T
         if not np.any(np.isnan(g)):
-            print g.shape
-            print G.shape
             G = np.hstack((g, G))
         w, d, _, _ = qpspecial(G, verbose=verbose)  # Anders Skajaa's QP code
         dnorm = numpy.linalg.norm(d, 2)

@@ -1,7 +1,8 @@
 """
 :Synopsis: Python implementation bfgs1run.m (HANSO): BFGS for non-smooth
 nonconvex functions via inexact line search
-Author: DOHMATOB Elvis Dopgima
+
+:Author: DOHMATOB Elvis Dopgima <gmdopp@gmail.com> <elvis.dohmatob@inria.fr>
 
 """
 
@@ -143,7 +144,6 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
     dnorm = numpy.linalg.norm(g, 2)
     # enter: main loop
     for it in xrange(maxit):
-        assert np.all(numpy.linalg.eig(H)[0] >= 0)
         p = -np.dot(H, g) if nvec == 0 else -hgprod(H, g, S, Y)
         gtp = np.dot(g.T, p)
         if gtp >= 0 or np.any(np.isnan(gtp)):
@@ -216,7 +216,6 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
         # must always have at least one gradient: could gain efficiency
         # here by updating previous QP solution
         if nG > 1:
-            # assert 0
             _log("Computing shortest l2-norm vector in convex hull of "
                  "cached gradients: G = %s ..." % G.T)
             w, d, _, _ = qpspecial(G, verbose=verbose)
@@ -355,7 +354,6 @@ if __name__ == '__main__':
 
     _x = None
     _f = np.inf
-    print x0.shape
     for j in xrange(x0.shape[1]):
         print ">" * 100, "(j = %i)" % j
         x, f = bfgs1run(x0[..., j], l1, gradl1,
@@ -372,8 +370,6 @@ if __name__ == '__main__':
                         scale=1,
                         evaldist=1e-6
                         )[:2]
-        # print x
-        # print f
         if f < _f:
             _f = f
             _x = x

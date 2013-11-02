@@ -1,3 +1,8 @@
+"""
+:Author: DOHMATOB Elvis Dopgima <gmdopp@gmail.com> <elvis.dohmatob@inria.fr>
+
+"""
+
 import time
 import numpy as np
 from gradsampfixed import gradsampfixed

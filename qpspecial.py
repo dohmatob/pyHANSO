@@ -50,7 +50,7 @@ def qpspecial(G, maxit=100, x=None, verbose=1):
     ap = 0
     ad = 0
     _log("k     mu       stpsz      res")
-    _log("--------------------------------")
+    _log("---------------------------------")
     aborted_loop = False
     for k in xrange(maxit):
         r1 = -np.dot(Q, x) + e * y + z
