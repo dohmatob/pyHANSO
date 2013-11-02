@@ -7,15 +7,19 @@ from example_functions import l1, gradl1
 
 rng = np.random.RandomState(42)
 m, n, k = 100, 300, 10
+design = "Convolutional"
 
 # random design
-# A = rng.randn(m, n)  # random design
-# A = np.tile(rng.randn(m),(n,1)).T + 0.0001 * rng.randn(m, n)
-
+if design.lower() == "random":
+    A = rng.randn(m, n)  # random design
+    A = np.tile(rng.randn(m), (n, 1)).T + 0.0001 * rng.randn(m, n)
 # convolutional design
-h = signal.gaussian(50, 5)
-A = signal.convolve2d(np.eye(n), h[:, np.newaxis], 'same')
-A = A[::n // m]
+elif design.lower() == "convolutional":
+    h = signal.gaussian(50, 5)
+    A = signal.convolve2d(np.eye(n), h[:, np.newaxis], 'same')
+    A = A[::n // m]
+else:
+    raise ValueError("Unknown design: %s" % design)
 
 x0 = rng.rand(n)
 x0[x0 < 0.3] = 0
@@ -178,6 +182,7 @@ pl.plot(times_ista, pobj_ista, label='ista')
 pl.plot(times_fista, pobj_fista, label='fista')
 pl.xlabel('Time')
 pl.ylabel('Primal')
+pl.title("%s design" % design)
 pl.gca().set_xscale('log')
 pl.gca().set_yscale('log')
 pl.legend()
