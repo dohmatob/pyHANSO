@@ -79,7 +79,7 @@ def getbundle(func, grad, x0, g0=None, samprad=1e-4, n=None):
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from example_functions import (l1 as func,
-                                   gradl1 as grad)
+                                   grad_l1 as grad)
 
     _, gbundle = getbundle(func, grad, [1e-6, -1e-6], n=100)
     plt.scatter(*gbundle)

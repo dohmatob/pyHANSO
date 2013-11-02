@@ -242,5 +242,5 @@ def linesch_ww(x0, func, grad, d, func0=None, grad0=None, wolfe1=0, wolfe2=.5,
     return alpha, xalpha, falpha, galpha, fail, beta, gbeta, fevalrec
 
 if __name__ == '__main__':
-    from example_functions import l1, gradl1
-    print linesch_ww([1, 1], l1, gradl1, [-1, -2])
+    from example_functions import l1, grad_l1
+    print linesch_ww([1, 1], l1, grad_l1, [-1, -2])

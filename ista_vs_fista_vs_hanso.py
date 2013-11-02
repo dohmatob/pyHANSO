@@ -3,11 +3,13 @@ from math import sqrt
 import numpy as np
 from scipy import linalg, signal
 import pylab as pl
-from example_functions import l1, gradl1
+from example_functions import l1, grad_l1, tv, grad_tv
+
+penalty_model = "tv"
 
 rng = np.random.RandomState(42)
 m, n, k = 100, 300, 10
-design = "Convolutional"
+design = "convolutional"
 
 # random design
 if design.lower() == "random":
@@ -27,13 +29,44 @@ b = np.dot(A, x0)
 l = 0.01
 
 
-def loss_function(A, b, lambd, x):
+def unpenalized_loss_func(A, b, lambd, x):
+    return .5 * linalg.norm(np.dot(A, x) - b) ** 2
+
+
+def l1_pernalized_loss_function(A, b, lambd, x):
     """
-    Frobenius + l1
+    Frobenius + l1 penalty
 
     """
 
     return .5 * linalg.norm(np.dot(A, x) - b) ** 2 + lambd * l1(x)
+
+
+def tv_pernalized_loss_function(A, b, lambd, x):
+    """
+    Frobenius + TV penalty
+
+    """
+
+    return .5 * linalg.norm(np.dot(A, x) - b) ** 2 + lambd * tv(x)
+
+
+def tv_plus_l1_pernalized_loss_function(A, b, lambd, x):
+    """
+    Frobenius + TV penalty + l1 penalty
+
+    """
+
+    raise NotImplementedError("TV+L1 penalty model not implmented!")
+
+# define loss function according to penalty model (l1, tv, tv+l1, etc.)
+if penalty_model == 'l1':
+    loss_function = l1_pernalized_loss_function
+elif penalty_model == "tv":
+    l = .05
+    loss_function = tv_pernalized_loss_function
+else:
+    raise ValueError("Unknown penalty model: %s" % penalty_model)
 
 
 def soft_thresh(x, l):
@@ -43,12 +76,12 @@ def soft_thresh(x, l):
 def ista(A, b, l, maxit):
     x = np.zeros(A.shape[1])
     pobj = []
-    L = linalg.norm(A)**2
+    L = linalg.norm(A) ** 2
     t0 = time.time()
     for _ in xrange(maxit):
-        x = soft_thresh(x + np.dot(A.T, b - A.dot(x)) / L, l/L)
+        x = soft_thresh(x + np.dot(A.T, b - A.dot(x)) / L, l / L)
         pobj.append((time.time() - t0,
-                     0.5 * linalg.norm(A.dot(x) - b)**2 + l * linalg.norm(x, 1)))
+                     loss_function(A, b, l, x)))
 
     times, pobj = map(np.array, zip(*pobj))
     return x, pobj, times
@@ -59,17 +92,17 @@ def fista(A, b, l, maxit):
     pobj = []
     t = 1
     z = x.copy()
-    L = linalg.norm(A)**2
+    L = linalg.norm(A) ** 2
     time0 = time.time()
     for _ in xrange(maxit):
         xold = x.copy()
         z = z + A.T.dot(b - A.dot(z)) / L
-        x = soft_thresh(z,l/L)
+        x = soft_thresh(z, l / L)
         t0 = t
-        t = (1 + sqrt(1 + 4*t**2)) / 2.
-        z = x + ((t0-1.)/t) * (x - xold)
+        t = (1 + sqrt(1 + 4 * t ** 2)) / 2.
+        z = x + ((t0 - 1.) / t) * (x - xold)
         pobj.append((time.time() - time0,
-                    0.5 * linalg.norm(A.dot(x) - b)**2 + l * linalg.norm(x, 1)))
+                     loss_function(A, b, l, x)))
 
     times, pobj = map(np.array, zip(*pobj))
     return x, pobj, times
@@ -101,8 +134,28 @@ def hanso(A, b, lambd, maxit, x0_init="random"):
     def func(x):
         return loss_function(A, b, lambd, x)
 
-    def grad(x):
-        return np.dot(A.T, np.dot(A, x) - b) + lambd * gradl1(x)
+    def grad_with_l1_penalty(x):
+        """
+        Gradient of loss function when penalty model is l1
+
+        """
+        return np.dot(A.T, np.dot(A, x) - b) + lambd * grad_l1(x)
+
+    def grad_with_tv_penalty(x):
+        """
+        Gradient of loss function when penalty model is tv
+
+        """
+
+        return np.dot(A.T, np.dot(A, x) - b) + lambd * grad_tv(x)
+
+    # penalty dependent gradient definition
+    if penalty_model == "l1":
+        grad = grad_with_l1_penalty
+    elif penalty_model == "tv":
+        grad = grad_with_tv_penalty
+    else:
+        raise ValueError("Unknown penalty model: %s" % penalty_model)
 
     if x0_init == "soft_thresh_ista":
         x0 = np.zeros(A.shape[1])
@@ -124,7 +177,6 @@ def hanso(A, b, lambd, maxit, x0_init="random"):
                     x0=x0,
                     sampgrad=True,
                     maxit=maxit,
-                    nvec=1,
 
                     # tolerance threshold for l2-norm of gradient
                     normtol=2 * 1e-3,
@@ -137,15 +189,8 @@ def hanso(A, b, lambd, maxit, x0_init="random"):
     times, pobj = map(np.array, zip(*pobj))
     return x0, pobj, times
 
-    # import pylab as pl
-    # print "xopt:", x
-    # print "fmin:", f
-    # pl.plot(np.array([x, x0]).T, '*-')
-    # pl.legend(("xopt from HANSO", "True x"))
-    # pl.show()
 
-
-maxit = 100000
+maxit = 1000  # 100000
 
 # HANSO
 hanso_x0_init_modes = ['random', 'soft_thresh_ista', 'soft_thresh_fista']
@@ -156,24 +201,31 @@ for x0_init in hanso_x0_init_modes:
     x_hanso, pobj, times = hanso(A, b, l, maxit, x0_init=x0_init)
     pobj_hanso.append(pobj)
     times_hanso.append(times)
-    print "xopt %s: %s" % (optimizer, x_hanso)
-    print "fmin %s: %s" % (optimizer, loss_function(A, b, l, x_hanso))
+    fmin_hanso = loss_function(A, b, l, x_hanso)
+    print "fmin %s: %s" % (optimizer, fmin_hanso)
     print
 
 # ISTA
 x_ista, pobj_ista, times_ista = ista(A, b, l, maxit)
+fmin_ista = loss_function(A, b, l, x_ista)
 print "xopt ISTA:", x_ista
-print "fmin ISTA:", loss_function(A, b, l, x_ista)
+print "fmin ISTA:", fmin_hanso
 print
 
 # FISTA
 x_fista, pobj_fista, times_fista = fista(A, b, l, maxit)
+fmin_fista = loss_function(A, b, l, x_fista)
 print "xopt FISTA:", x_fista
-print "fmin FISTA:", loss_function(A, b, l, x_fista)
+print "fmin FISTA:", fmin_fista
 print
 
-# plot results
+# repare for reporting
 pl.close('all')
+
+# plot time perfomance
+pl.figure()
+pl.title("Linear regression on %s design with %s penalty model" % (
+        design, penalty_model))
 for x0_init, times, pobj in zip(hanso_x0_init_modes,
                                 times_hanso, pobj_hanso):
     optimizer = "HANSO (%s x0 init)" % x0_init
@@ -182,8 +234,20 @@ pl.plot(times_ista, pobj_ista, label='ista')
 pl.plot(times_fista, pobj_fista, label='fista')
 pl.xlabel('Time')
 pl.ylabel('Primal')
-pl.title("%s design" % design)
 pl.gca().set_xscale('log')
 pl.gca().set_yscale('log')
 pl.legend()
+
+# plot betamaps
+pl.title(("Linear regression on %s design with %s penalty model "
+          "(lambda = %f)" % (design, penalty_model.upper(), l)))
+pl.figure()
+pl.plot(x0, 'o-', label='True betamap')
+pl.plot(x_hanso, 's-', label='HANSO estimated betamap')
+# pl.plot(x_ista, '*-', label='ISTA estimated betamap')
+# pl.plot(x_fista, '^-', label='FISTA estimated betamap')
+pl.ylabel("beta values (i.e regression coffients)")
+pl.xlabel("conditions (index with nonnegative integers)")
+pl.legend()
+
 pl.show()

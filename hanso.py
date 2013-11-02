@@ -14,7 +14,7 @@ from postprocess import postprocess
 
 def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
           normtol=1e-6, verbose=2, fvalquit=-np.inf, cpumax=np.inf,
-          maxit=100,  **kwargs):
+          maxit=100, **kwargs):
     """
     HANSO: Hybrid Algorithm for Nonsmooth Optimization
 
@@ -89,22 +89,28 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
     x: D array of same length nvar = len(x0)
         final iterate
 
-    _f: list of nstart floats
+    f: list of nstart floats
         final function values, one per run of bfgs1run
 
-    _d: list of nstart 1D arrays, each of same length as input nvar
-       final smallest vectors in convex hull of saved gradients,
-       one array per run of bfgs1run
+    d: list of nstart 1D arrays, each of same length as input nvar
+        final smallest vectors in convex hull of saved gradients,
+        one array per run of bfgs1run
 
-    _H: list of nstarts 2D arrays, each of shape (nvar, nvar)
-       final inverse Hessian approximations, one array per run of bfgs1run
+    H: list of nstarts 2D arrays, each of shape (nvar, nvar)
+        final inverse Hessian approximations, one array per run of bfgs1run
 
     itrecs: list of nstart int
-       numbers of iterations, one per run of bfgs1run; see bfgs1run
-       for details
+        numbers of iterations, one per run of bfgs1run; see bfgs1run
+        for details
 
     inforecs: list of int
         reason for termination; see bfgs1run for details
+
+    pobj: list of tuples of the form (duration of iteration, final func value)
+        trajectory for best starting point (i.e of the starting point that
+        led to the greatest overall decrease in the cost function.
+        Note that the O(1) time consumed by the gradient-sampling stage is not
+        counted.
 
     Optional Outputs (in case output_records is True):
     Xrecs: list of nstart 2D arrays, each of shape (iter, nvar)
@@ -213,7 +219,7 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
 
     if sampgrad:
         # launch gradient sampling
-        time0 = time.time()
+        # time0 = time.time()
         f_BFGS = f
         # save optimality certificate info in case gradient sampling cannot
         # improve the one provided by BFGS
@@ -260,7 +266,7 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
 
         x = x[0]
         f = f[0]
-        pobj.append((time.time() - time0, f))
+        # pobj.append((time.time() - time0, f))
         return x, f, loc, X, G, w, H, pobj
     else:
         return x, f, loc, X, G, w, H, pobj
@@ -269,11 +275,12 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
 if __name__ == '__main__':
     import os
     import scipy.io
-    from setx0 import setx0
+    import matplotlib.pyplot as plt
     func_names = [
-        # 'Nesterov',
-        # 'Rosenbrock "banana"',
-        # 'l2-norm',  # this is smooth and convex, we're only being ironic here
+        "tv",
+        'Nesterov',
+        'Rosenbrock "banana"',
+        'l2-norm',  # this is smooth and convex, we're only being ironic here
         'l1-norm',
         ]
     wolfe_kinds = [0,  # weak
@@ -281,11 +288,14 @@ if __name__ == '__main__':
                    ]
 
     for func_name, j in zip(func_names, xrange(len(func_names))):
-        nstart = 200
-        nvar = 20
+        nstart = 20
+        nvar = 300
+        if func_name == "tv":
+            from example_functions import (tv as func,
+                                           grad_tv as grad)
         if "l1-norm" in func_name:
             from example_functions import (l1 as func,
-                                           gradl1 as grad)
+                                           grad_l1 as grad)
         if "l2-norm" in func_name:
             from example_functions import (l2 as func,
                                            gradl2 as grad)
@@ -314,24 +324,33 @@ if __name__ == '__main__':
 
         for strongwolfe in wolfe_kinds:
             # run BFGS
-            x, f = hanso(func, grad,
-                         x0=x0,
-                         sampgrad=True,
-                         # nvar=nvar, nstart=nstart,
-                         strongwolfe=strongwolfe,
-                         maxit=10,
-                         normtol=1e-6,
-                         xnormquit=np.inf,
-                         fvalquit=-np.inf,
-                         cpumax=np.inf,
-                         wolfe1=0.,
-                         wolfe2=.5,
-                         nvec=0,
-                         scale=1,
-                         evaldist=1e-6,
-                         verbose=2
-                         )[:2]
-            print "xopt:", x
-            print "fmin:", f
+            results = hanso(func, grad,
+                            x0=x0,
+                            sampgrad=True,
+                            strongwolfe=strongwolfe,
+                            maxit=1000,
+                            normtol=2 * 1e-3,
+                            fvalquit=1e-4,
+                            verbose=2
+                            )
+            xmin, fmin = results[:2]
+            pobj = results[-1]
 
+            assert fmin == func(xmin)
+
+            print "xopt:", xmin
+            print "fmin:", fmin
+
+            times, pobj = map(np.array, zip(*pobj))
+
+            plt.plot(times, pobj, label="%swolfe" % (
+                    ['weak', 'strong'][strongwolfe]))
+            plt.xlabel('Time')
+            plt.ylabel('Primal')
+            plt.gca().set_xscale('log')
+            plt.gca().set_yscale('log')
+            plt.legend()
+
+        plt.title(func_name)
+        plt.show()
         print "... done (%s).\r\n" % func_name

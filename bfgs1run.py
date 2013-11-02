@@ -408,7 +408,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
 if __name__ == '__main__':
     nvar = 20
     func_name = 'Rosenbrock "Banana" function in %i dimensions' % nvar
-    from example_functions import (l1, gradl1)
+    from example_functions import (l1, grad_l1)
     import scipy.io
     x0 = scipy.io.loadmat("/tmp/x0.mat", squeeze_me=True,
                           struct_as_record=False)['x0']
@@ -419,7 +419,7 @@ if __name__ == '__main__':
     _f = np.inf
     for j in xrange(x0.shape[1]):
         print ">" * 100, "(j = %i)" % j
-        x, f = bfgs1run(x0[..., j], l1, gradl1,
+        x, f = bfgs1run(x0[..., j], l1, grad_l1,
                         strongwolfe=0,
                         maxit=10,
                         verbose=0,

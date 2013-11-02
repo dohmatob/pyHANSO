@@ -85,7 +85,7 @@ def gradsamp(func, grad, x0, maxit=10, cpumax=np.inf, verbose=1, **kwargs):
 if __name__ == '__main__':
     from setx0 import setx0
     from example_functions import (l1 as func,
-                                   gradl1 as grad)
+                                   grad_l1 as grad)
     x0 = setx0(20, 10)
     x, f, g, dnorm, X, G, w = gradsamp(func, grad, x0)
     print "fmin:", f

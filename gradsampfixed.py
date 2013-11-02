@@ -116,7 +116,7 @@ def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
 
 if __name__ == '__main__':
     from example_functions import (l1 as func,
-                                   gradl1 as grad)
+                                   grad_l1 as grad)
     x, f, g, dnorm, X, G, w, quitall = gradsampfixed(func, grad,
                                                      [1e-6, -1e-6])
     print "fmin:", f

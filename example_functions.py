@@ -1,3 +1,8 @@
+"""
+:Author: DOHMATOB Elvis Dopgima <gmdopp@gmail.com> <elvis.dohmatob.inria.fr>
+
+"""
+
 import numpy as np
 import numpy.linalg
 
@@ -24,7 +29,7 @@ def l1(x):
     return 1. * numpy.linalg.norm(x, 1)
 
 
-def gradl1(x):
+def grad_l1(x):
     return np.array(x) / np.abs(x)
 
 
@@ -65,3 +70,34 @@ def grad_nesterov(x, **kwargs):
 
     return np.hstack((-2 * X1 * Z / np.abs(Z) + 2 * (X1 - 1) * I[0, :-1],
                        z / np.abs(z)))
+
+
+def tv(x):
+    """
+    Total variation: l1-norm of gradient
+
+    """
+
+    return l1(np.diff(x))
+
+
+def grad_tv(x):
+    """
+    Gradient of total variation
+
+    """
+
+    n = len(x)  # length of signal
+    index_mask = np.arange(n)  # mask for index positions
+    diff1 = np.hstack((np.diff(x), 0.))  # gradient of signal
+    diff2 = diff1[(index_mask - 1) % n]  # unit rightward shift of gradient
+
+    # regularize a lil' bit (this can save lives!)
+    diff1 += 1e-10
+    diff2 += 1e-10
+
+    # finally
+    return (0 < index_mask  # all but first index
+            ) * diff2 / np.abs(diff2) - (
+        index_mask < n - 1  # all but last index
+        ) * diff1 / np.abs(diff1)

@@ -116,6 +116,11 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
     inforecs: list of int
         reason for termination; see bfgs1run for details
 
+    pobj: list of lists of tuples of the form (duration of iteration,
+    final func value)
+        for each starting point, the energy trajectory for each iteration
+        of the iterates therefrom
+
     Optional Outputs (in case output_records is True):
     Xrecs: list of nstart 2D arrays, each of shape (iter, nvar)
         iterates where saved gradients were evaluated; one array per run
@@ -266,16 +271,16 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
         # HH should be exactly symmetric as of version 2.02, but does no harm
         _H.append((HH + HH.T) / 2.)
 
-        # check that we'ven't exploded the time budget
-        if time.time() > cpufinish or f < fvalquit or numpy.linalg.norm(
-            x, 2) > xnormquit:
-            break
-
         # commit times
         run_pobj = []
         for duration, f in times:
             run_pobj.append((duration, f))
         pobj.append(run_pobj)
+
+        # check that we'ven't exploded the time budget
+        if time.time() > cpufinish or f < fvalquit or numpy.linalg.norm(
+            x, 2) > xnormquit:
+            break
     # end of for loop
 
     # we're done: now collect and return outputs to caller
@@ -309,7 +314,7 @@ if __name__ == '__main__':
         nvar = 500
         if "l1-norm" in func_name:
             from example_functions import (l1 as func,
-                                           gradl1 as grad)
+                                           grad_l1 as grad)
         if "l2-norm" in func_name:
             from example_functions import (l2 as func,
                                            gradl2 as grad)
