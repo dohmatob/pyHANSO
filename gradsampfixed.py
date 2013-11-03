@@ -5,7 +5,7 @@
 
 import time
 import numpy as np
-import numpy.linalg
+from scipy import linalg
 from linesch_ww import linesch_ww
 from getbundle import getbundle
 from qpspecial import qpspecial
@@ -62,7 +62,7 @@ def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
         wnew, dnew, _, _ = qpspecial(Gnew, verbose=verbose)
         dnew = -dnew  # this is a descent direction
         gtdnew = np.dot(g.T, dnew)   # gradient value at current point
-        dnormnew = numpy.linalg.norm(dnew, 2)
+        dnormnew = linalg.norm(dnew, 2)
         if dnormnew < dnorm:  # for returning, may not be the final one
             dnorm = dnormnew
             X = Xnew

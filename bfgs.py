@@ -5,7 +5,7 @@
 
 import time
 import numpy as np
-import numpy.linalg
+from scipy import linalg
 from bfgs1run import bfgs1run
 from setx0 import setx0
 
@@ -278,7 +278,7 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
         pobj.append(run_pobj)
 
         # check that we'ven't exploded the time budget
-        if time.time() > cpufinish or f < fvalquit or numpy.linalg.norm(
+        if time.time() > cpufinish or f < fvalquit or linalg.norm(
             x, 2) > xnormquit:
             break
     # end of for loop

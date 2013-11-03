@@ -6,9 +6,11 @@ nonconvex functions via inexact line search
 
 """
 
-import numpy as np
-import numpy.linalg
 import time
+
+import numpy as np
+from scipy import linalg
+
 from hgprod import hgprod
 from qpspecial import qpspecial
 from linesch_ww import linesch_ww
@@ -195,7 +197,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
         return  x, f, d, H, 0, info, X, G, w, fevalrec, xrec, Hrec, times
 
     # enter: main loop
-    dnorm = numpy.linalg.norm(g, 2)  # initialize dnorm stopping creteria
+    dnorm = linalg.norm(g, 2)  # initialize dnorm stopping creteria
     f_old = f
     for it in xrange(maxit):
         p = -np.dot(H, g) if nvec == 0 else -hgprod(H, g, S, Y)
@@ -251,7 +253,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
         # for the optimal check: discard the saved gradients iff the
         # new point x is not sufficiently close to the previous point
         # and replace them with new gradient
-        if alpha * numpy.linalg.norm(p, 2) > evaldist:
+        if alpha * linalg.norm(p, 2) > evaldist:
             nG = 1
             G = np.array([g]).T
             X = np.array([x]).T
@@ -279,9 +281,9 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
             w = 1
             d = np.array(g)
 
-        dnorm = numpy.linalg.norm(d, 2)
+        dnorm = linalg.norm(d, 2)
 
-        # XXX this recordings shoud be optional!
+        # XXX these recordings shoud be optional!
         xrec.append(x)
         fevalrec.append(fevalrecline)
         Hrec.append(H)
@@ -300,7 +302,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
             return x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
 
         # this is not checked inside the line search
-        elif numpy.linalg.norm(x, 2) > xnormquit:
+        elif linalg.norm(x, 2) > xnormquit:
             _log('bfgs1run: norm(x) exceeds specified limit, quitting after'
                  ' %d iteration(s)' % (it + 1))
             info = 3

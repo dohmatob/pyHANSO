@@ -4,7 +4,7 @@
 """
 
 import numpy as np
-import numpy.linalg
+from scipy import linalg
 
 
 def l2(x):
@@ -13,7 +13,7 @@ def l2(x):
 
     """
 
-    return .5 * numpy.linalg.norm(x, 2) ** 2
+    return .5 * linalg.norm(x, 2) ** 2
 
 
 def gradl2(x):
@@ -26,11 +26,11 @@ def l1(x):
 
     """
 
-    return 1. * numpy.linalg.norm(x, 1)
+    return 1. * linalg.norm(x, 1)
 
 
 def grad_l1(x):
-    return np.array(x) / np.abs(x)
+    return np.sign(x)
 
 
 def rosenbrock_banana(x, **kwargs):

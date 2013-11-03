@@ -5,7 +5,7 @@
 
 import time
 import numpy as np
-import numpy.linalg
+from scipy import linalg
 from gradsamp1run import gradsamp1run
 
 
@@ -62,7 +62,7 @@ def gradsamp(func, grad, x0, maxit=10, cpumax=np.inf, verbose=1, **kwargs):
             f.append(f0)
             x.append(x0[..., run])
             g.append(g0)
-            dnorm.append(numpy.linalg.norm(g0, 2))
+            dnorm.append(linalg.norm(g0, 2))
             X.append(x[..., run])
             G.append(g0)
             w.append(1)

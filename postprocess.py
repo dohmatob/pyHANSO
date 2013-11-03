@@ -4,7 +4,8 @@
 """
 
 import numpy as np
-import numpy.linalg
+from scipy import linalg
+
 from qpspecial import qpspecial
 
 
@@ -20,7 +21,7 @@ def postprocess(x, g, dnorm, X, G, w, verbose=1):
 
     """
 
-    dist = [numpy.linalg.norm(x - X[..., j], 2) for j in xrange(X.shape[1])]
+    dist = [linalg.norm(x - X[..., j], 2) for j in xrange(X.shape[1])]
 
     evaldist = np.max(dist)  # for returning
     indx = np.argmin(dist)  # for checking if x is a column of X
@@ -45,6 +46,6 @@ def postprocess(x, g, dnorm, X, G, w, verbose=1):
         if not np.any(np.isnan(g)):
             G = np.hstack((g, G))
         w, d, _, _ = qpspecial(G, verbose=verbose)  # Anders Skajaa's QP code
-        dnorm = numpy.linalg.norm(d, 2)
+        dnorm = linalg.norm(d, 2)
 
     return {"dnorm": dnorm, "evaldist": evaldist}, X, G, w

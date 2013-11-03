@@ -1,3 +1,8 @@
+"""
+:Author: DOHMATOB Elvis Dopgima <gmdopp@gmail.com> <elvis.dohmatob@inria.fr>
+
+"""
+
 import numpy as np
 
 
@@ -17,13 +22,13 @@ def hgprod(H0, g, S, Y):
         y = Y[..., i]
         rho[i] = 1. / np.dot(s.T, y)
         alpha[i] = rho[i] * np.dot(s.T, q)
-        q = q - alpha[i] * y
+        q -= alpha[i] * y
 
     r = np.dot(H0, q)
     for i in xrange(N):
         s = S[..., i]
         y = Y[..., i]
         beta = rho[i] * np.dot(y.T, r)
-        r = r + (alpha[i] - beta) * s
+        r += (alpha[i] - beta) * s
 
     return r

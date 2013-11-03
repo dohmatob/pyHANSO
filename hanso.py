@@ -4,7 +4,7 @@
 """
 
 import numpy as np
-import numpy.linalg
+from scipy import linalg
 import time
 from setx0 import setx0
 from bfgs import bfgs
@@ -188,7 +188,7 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
     w = w[indx]
     pobj = pobj[indx]
 
-    dnorm = numpy.linalg.norm(d, 2)
+    dnorm = linalg.norm(d, 2)
     # the 2nd argument will not be used since x == X(:,1) after bfgs
     loc, X, G, w = postprocess(x, np.nan, dnorm, X, G, w, verbose=verbose)
 
