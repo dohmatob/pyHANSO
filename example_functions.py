@@ -30,7 +30,7 @@ def l1(x):
 
 
 def grad_l1(x):
-    return np.array(x) / np.abs(x)
+    return np.sign(x)
 
 
 def rosenbrock_banana(x, **kwargs):

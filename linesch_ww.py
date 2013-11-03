@@ -4,8 +4,8 @@
 
 """
 
+from scipy import linalg
 import numpy as np
-import numpy.linalg
 
 
 def linesch_ww(x0, func, grad, d, func0=None, grad0=None, wolfe1=0, wolfe2=.5,
@@ -156,7 +156,7 @@ def linesch_ww(x0, func, grad, d, func0=None, grad0=None, wolfe1=0, wolfe2=.5,
         # a descent direction')
         _log('linesch_ww: WARNING, not a descent direction')
 
-    dnorm = numpy.linalg.norm(d, 2)
+    dnorm = linalg.norm(d, 2)
     if dnorm == 0:
         raise RuntimeError('linesch_ww_mod: d is zero')
     t = 1  # important to try steplength one first

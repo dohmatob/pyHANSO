@@ -1,7 +1,5 @@
 import numpy as np
-import numpy.linalg
-import scipy.linalg
-import scipy.sparse.linalg
+from scipy import linalg
 
 
 def qpspecial(G, maxit=100, x=None, verbose=1):
@@ -9,7 +7,7 @@ def qpspecial(G, maxit=100, x=None, verbose=1):
     Solves the QP
     min q(x) = || G * x ||_2^2 = x' * (G' * G) * x
     s.t. sum(X) = 1
-              x >= 0=
+              x >= 0
 
     """
 
@@ -45,7 +43,7 @@ def qpspecial(G, maxit=100, x=None, verbose=1):
     tolmu = 1e-5
     tolrs = 1e-5
     kmu = tolmu * mu0
-    nQ = numpy.linalg.norm(Q, np.inf) + 2
+    nQ = linalg.norm(Q, np.inf) + 2
     krs = tolrs * nQ
     ap = 0
     ad = 0
@@ -56,7 +54,7 @@ def qpspecial(G, maxit=100, x=None, verbose=1):
         r1 = -np.dot(Q, x) + e * y + z
         r2 = -1 + np.sum(x)
         r3 = -x * z
-        rs = numpy.linalg.norm(np.vstack((r1, r2)), np.inf)
+        rs = linalg.norm(np.vstack((r1, r2)), np.inf)
         mu = -np.sum(r3) / n
 
         _log('%-3.1i %9.2e %9.2e %9.2e' % (
@@ -72,28 +70,29 @@ def qpspecial(G, maxit=100, x=None, verbose=1):
         QD = np.array(Q).ravel() * 1.
         QD[idx] = QD[idx] + zdx.ravel()
         QD = QD.reshape(Q.shape)
-        C = scipy.linalg.cholesky(QD, lower=False)
-        KT = scipy.linalg.solve(C.T, e, lower=True)
+        C = linalg.cholesky(QD, lower=False)
+        KT = linalg.solve(C.T, e, lower=True)
         M = np.dot(KT.T, KT)
         r4 = r1 + r3 / x
-        r5 = np.dot(KT.T, scipy.linalg.solve(C.T, r4, lower=True))
+        r5 = np.dot(KT.T, linalg.solve(C.T, r4, lower=True))
         r6 = r2 + r5
         dy = -r6 / M
         r7 = r4 + e * dy
-        dx = scipy.linalg.solve(QD, r7, sym_pos=True)
+        dx = linalg.solve(QD, r7, sym_pos=True)
         dz = (r3 - z * dx) / x
 
         p = -x / dx
-        if (p > 0).sum() == 0:
+        # XXX white p > 0. and not p > 0 (ie use floats)
+        if (p > 0).sum() == 0:  # XXX : use np.any
             ap = 1
         else:
-            ap = min(np.min(p[p > 0]), 1)
+            ap = min(np.min(p[p > 0]), 1)  # XXX don't recompute p > 0
         p = -z / dz
 
         if (p > 0).sum() == 0:
             ad = 1
         else:
-            ad = min(np.min(p[p > 0]), 1)
+            ad = min(np.min(p[p > 0]), 1)  # XXX don't recompute p > 0
 
         muaff = np.dot((x + ap * dx).T, z + ad * dz) / n
         sig = (muaff / mu) ** delta
@@ -101,24 +100,24 @@ def qpspecial(G, maxit=100, x=None, verbose=1):
         r3 = r3 + sig * mu
         r3 = r3 - dx * dz
         r4 = r1 + r3 / x
-        r5 = np.dot(KT.T, scipy.linalg.solve(C.T, r4, lower=True))
+        r5 = np.dot(KT.T, linalg.solve(C.T, r4, lower=True))
         r6 = r2 + r5
         dy = -r6 / M
         r7 = r4 + e * dy
-        dx = scipy.linalg.solve(QD, r7, sym_pos=True)
+        dx = linalg.solve(QD, r7, sym_pos=True)
         dz = (r3 - z * dx) / x
 
         p = -x / dx
         if (p > 0).sum() == 0:
             ap = 1
         else:
-            ap = min(np.min(p[p > 0]), 1)
+            ap = min(np.min(p[p > 0]), 1)  # XXX don't recompute p > 0
 
         p = -z / dz
         if (p > 0).sum() == 0:
             ad = 1
         else:
-            ad = min(np.min(p[p > 0]), 1)
+            ad = min(np.min(p[p > 0]), 1)  # XXX don't recompute p > 0
 
         x = x + eta * ap * dx
         y = y + eta * ad * dy
