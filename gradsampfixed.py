@@ -12,7 +12,7 @@ from qpspecial import qpspecial
 
 
 def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
-                  normtol=1e-6, fvalquit=-np.inf, cpumax=np.inf,
+                  gradnormtol=1e-6, fvalquit=-np.inf, cpumax=np.inf,
                   verbose=2, ngrad=None, **kwargs):
     """"
     Gradient sampling minimization with fixed sampling radius
@@ -68,7 +68,7 @@ def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
             X = Xnew
             G = Gnew
             w = wnew
-        if dnormnew < normtol:
+        if dnormnew < gradnormtol:
             # since dnormnew is first to satisfy tolerance, it must equal dnorm
             _log('  tolerance met at iter %d, f = %g, dnorm = %5.1e' % (
                     it, f, dnorm))

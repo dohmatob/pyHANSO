@@ -14,10 +14,10 @@ from qpspecial import qpspecial
 from linesch_ww import linesch_ww
 
 
-def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
-             fvalquit=-np.inf, xnormquit=np.inf, cpumax=np.inf,
-             strongwolfe=False, wolfe1=0, wolfe2=.5, quitLSfail=1, ngrad=None,
-             evaldist=1e-4, H0=None, scale=1):
+def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
+             gradnormtol=1e-4, fvalquit=-np.inf, xnormquit=np.inf,
+             cpumax=np.inf, strongwolfe=False, wolfe1=0, wolfe2=.5,
+             quitLSfail=1, ngrad=None, evaldist=1e-4, H0=None, scale=1):
     """
     Make a single run of BFGS (with inexact line search) from one starting
     point. Intended to be called from bfgs.
@@ -55,7 +55,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
     fvalquit: float, optional (default -inf)
         param passed to bfgs1run function
 
-    normtol: float, optional (default 1e-6)
+    gradnormtol: float, optional (default 1e-6)
         termination tolerance on d: smallest vector in convex hull of up
         to ngrad gradients
 
@@ -122,6 +122,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
          6: direction not a descent direction (because of rounding)
          7: line search bracketed minimizer but Wolfe conditions not satisfied
          8: line search did not bracket minimizer: f may be unbounded below
+         9: relative tolerance on function value met on last iteration
 
     X: 2D array of shape (iter, nvar)
         iterates where saved gradients were evaluated
@@ -174,8 +175,8 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
 
     # prepare for timing
     cpufinish = time.time() + cpumax
-    times = []
     time0 = time.time()
+    times = []
 
     # first evaluation
     f, g = func(x), grad(x)
@@ -195,6 +196,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
 
     # enter: main loop
     dnorm = numpy.linalg.norm(g, 2)  # initialize dnorm stopping creteria
+    f_old = f
     for it in xrange(maxit):
         p = -np.dot(H, g) if nvec == 0 else -hgprod(H, g, S, Y)
         gtp = np.dot(g.T, p)
@@ -238,7 +240,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
                 _log(' exact line sch simulation: slightly increasing step '
                      'from %g to %g' % (alpha, alpha + increase), level=1)
 
-                f, g = func(x, **kwargs), grad(x)
+                f, g = func(x), grad(x)
         else:
             _log("Starting inexact line search (weak Wolfe) ...")
             alpha, x, f, g, fail, _, _, fevalrecline = linesch_ww(
@@ -317,8 +319,8 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
                 times.append((time.time() - time0, f))
                 return  (x, f, d, H, it, info, X, G, w, fevalrec, xrec,
                          Hrec, times)
- 
-       # function apparently unbounded below
+
+        # function apparently unbounded below
         elif fail == -1:
             _log('bfgs1run: f may be unbounded below, quitting after %d '
                  'iteration(s), f = %g' % (it + 1, f))
@@ -326,7 +328,19 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
             times.append((time.time() - time0, f))
             return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec
 
-        if dnorm <= normtol:
+        # are we trapped in a local minimum ?
+        relative_change = np.abs(1 - 1. * f_old / f) if f != f_old else 0
+        if relative_change < funcrtol:
+            _log('bfgs1run: relative change in func over last iteration (%g)'
+                 ' below tolerance (%g) , quiting after %d iteration(s),'
+                 ' f = %g' % (relative_change, funcrtol, it + 1, f))
+            info = 9
+            times.append((time.time() - time0, f))
+            return  (x, f, d, H, it, info, X, G, w, fevalrec, xrec,
+                     Hrec, times)
+
+        # check near-stationarity
+        if dnorm <= gradnormtol:
             if nG == 1:
                 _log('bfgs1run: gradient norm below tolerance, quiting '
                      'after %d iteration(s), f = %g' % (it + 1, f))
@@ -396,6 +410,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
                 # recommended by Nocedal-Wright
                 H = np.dot(np.dot(s.T, y), np.dot(np.dot(y.T, y), H0))
 
+        f_old = f
         times.append((time.time() - time0, f))
     # end of 'for loop'
 
@@ -406,12 +421,19 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, normtol=1e-4,
     return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
 
 if __name__ == '__main__':
-    nvar = 20
+    nvar = 300
+    nstart = 20
     func_name = 'Rosenbrock "Banana" function in %i dimensions' % nvar
+    import os
     from example_functions import (l1, grad_l1)
+    from setx0 import setx0
     import scipy.io
-    x0 = scipy.io.loadmat("/tmp/x0.mat", squeeze_me=True,
-                          struct_as_record=False)['x0']
+    if os.path.isfile("/tmp/x0.mat"):
+        x0 = scipy.io.loadmat("/tmp/x0.mat", squeeze_me=True,
+                              struct_as_record=False)['x0']
+    else:
+        x0 = setx0(nvar, nstart)
+
     if x0.ndim == 1:
         x0 = x0.reshape((-1, 1))
 
@@ -421,9 +443,9 @@ if __name__ == '__main__':
         print ">" * 100, "(j = %i)" % j
         x, f = bfgs1run(x0[..., j], l1, grad_l1,
                         strongwolfe=0,
-                        maxit=10,
-                        verbose=0,
-                        normtol=1e-6,
+                        maxit=100,
+                        verbose=2,
+                        gradnormtol=1e-6,
                         xnormquit=np.inf,
                         fvalquit=-np.inf,
                         cpumax=np.inf,

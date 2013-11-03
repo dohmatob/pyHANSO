@@ -11,7 +11,7 @@ from setx0 import setx0
 
 
 def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
-         verbose=1, normtol=1e-6, fvalquit=-np.inf, xnormquit=np.inf,
+         verbose=1, gradnormtol=1e-6, fvalquit=-np.inf, xnormquit=np.inf,
          cpumax=np.inf, strongwolfe=False, wolfe1=0, wolfe2=.5, quitLSfail=1,
          ngrad=None, evaldist=1e-6, H0=None, scale=1, output_records=2
          ):
@@ -45,7 +45,7 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
     wolfe2: float, optional (default .5)
         param passed to bfgs1run function
 
-    normtol: float, optional (default 1e-6)
+    gradnormtol: float, optional (default 1e-6)
         termination tolerance on d: smallest vector in convex hull of up
         to ngrad gradients
 
@@ -221,8 +221,8 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
         if output_records > 1:
             x, f, d, HH, it, info, X, G, w, fevalrec, xrec, Hrec, times = \
                 bfgs1run(x0[..., run], func, grad, maxit=maxit, wolfe1=wolfe1,
-                         wolfe2=wolfe2, normtol=normtol, fvalquit=fvalquit,
-                         xnormquit=xnormquit, cpumax=cpumax,
+                         wolfe2=wolfe2, gradnormtol=gradnormtol,
+                         fvalquit=fvalquit, xnormquit=xnormquit, cpumax=cpumax,
                          strongwolfe=strongwolfe, verbose=verbose,
                          quitLSfail=quitLSfail, ngrad=ngrad, evaldist=evaldist,
                          H0=H0, scale=scale)
@@ -240,7 +240,7 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
         elif output_records > 0:
             x, f, d, HH, it, info, X, G, w, _, _, _, times = bfgs1run(
                 x0[..., run], func, grad, maxit=maxit, wolfe1=wolfe1,
-                wolfe2=wolfe2, normtol=normtol, fvalquit=fvalquit,
+                wolfe2=wolfe2, gradnormtol=gradnormtol, fvalquit=fvalquit,
                 xnormquit=xnormquit, cpumax=cpumax, strongwolfe=strongwolfe,
                 verbose=verbose, quitLSfail=quitLSfail, ngrad=ngrad,
                 evaldist=evaldist, H0=H0, scale=scale)
@@ -255,7 +255,7 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
         else:  # avoid computing unnecessary arrays
             x, f, d, HH, it, info, _, _, _, _, _, _, times = bfgs1run(
                 x0[..., run], func, grad, maxit=maxit, wolfe1=wolfe1,
-                wolfe2=wolfe2, normtol=normtol, fvalquit=fvalquit,
+                wolfe2=wolfe2, gradnormtol=gradnormtol, fvalquit=fvalquit,
                 xnormquit=xnormquit, cpumax=cpumax, strongwolfe=strongwolfe,
                 verbose=verbose, quitLSfail=quitLSfail, ngrad=ngrad,
                 evaldist=evaldist, H0=H0, scale=scale)

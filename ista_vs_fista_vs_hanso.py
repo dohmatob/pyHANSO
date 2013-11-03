@@ -7,7 +7,7 @@ from example_functions import l1, grad_l1, tv, grad_tv
 
 penalty_model = "tv"
 
-rng = np.random.RandomState(42)
+rng = np.random.RandomState(42)  # pseudo-random number generator
 m, n, k = 100, 300, 10
 design = "convolutional"
 
@@ -35,6 +35,15 @@ if penalty_model == "tv":
 
 # observed signal
 b = np.dot(A, x0)
+
+
+def concat_times(times1, times2):
+    if len(times2) == 0:
+        return times1
+    elif len(times1) > 0:
+        return np.hstack((times1, times1[-1] + np.array(times2)))
+    else:
+        return times2
 
 
 def unpenalized_loss_func(A, b, lambd, x):
@@ -71,7 +80,7 @@ def tv_plus_l1_pernalized_loss_function(A, b, lambd, x):
 if penalty_model == 'l1':
     loss_function = l1_pernalized_loss_function
 elif penalty_model == "tv":
-    l = .05
+    # l = .05
     loss_function = tv_pernalized_loss_function
 else:
     raise ValueError("Unknown penalty model: %s" % penalty_model)
@@ -95,13 +104,14 @@ def ista(A, b, l, maxit):
     return x, pobj, times
 
 
-def fista(A, b, l, maxit):
+def fista(A, b, l, maxit, stop_if_energy_rises=False):
     x = np.zeros(A.shape[1])
     pobj = []
     t = 1
     z = x.copy()
     L = linalg.norm(A) ** 2
     time0 = time.time()
+    old_energy = np.inf
     for _ in xrange(maxit):
         xold = x.copy()
         z = z + A.T.dot(b - A.dot(z)) / L
@@ -109,8 +119,15 @@ def fista(A, b, l, maxit):
         t0 = t
         t = (1 + sqrt(1 + 4 * t ** 2)) / 2.
         z = x + ((t0 - 1.) / t) * (x - xold)
+        energy = loss_function(A, b, l, x)
+
+        if old_energy < energy and stop_if_energy_rises:
+            break
+        else:
+            old_energy = energy
+
         pobj.append((time.time() - time0,
-                     loss_function(A, b, l, x)))
+                     energy))
 
     times, pobj = map(np.array, zip(*pobj))
     return x, pobj, times
@@ -124,8 +141,8 @@ def hanso(A, b, lambd, maxit, x0_init="random"):
     ----------
     x0_init: string, optional (defautl "random")
         initialization mode for HANSO: Possible values are:
-        "soft_thresh_ista": initialize as if ISTA
-        "soft_thresh_fista": initialize as if FISTA
+        "fista": run FISTA, and then switch to HANSO once energy starts
+        to increase
         "random": initialize as usual (multivariate standard normal)
 
     Raises
@@ -157,6 +174,9 @@ def hanso(A, b, lambd, maxit, x0_init="random"):
 
         return np.dot(A.T, np.dot(A, x) - b) + lambd * grad_tv(x)
 
+    pobj = []
+    times = []
+
     # penalty dependent gradient definition
     if penalty_model == "l1":
         grad = grad_with_l1_penalty
@@ -165,42 +185,37 @@ def hanso(A, b, lambd, maxit, x0_init="random"):
     else:
         raise ValueError("Unknown penalty model: %s" % penalty_model)
 
-    if x0_init == "soft_thresh_ista":
-        x0 = np.zeros(A.shape[1])
-        L = linalg.norm(A) ** 2
-        x0 = soft_thresh(x0 + np.dot(A.T, b - np.dot(A, x0)) / L,
-                         l / L)
-    elif x0_init == "soft_thresh_fista":
-        x0 = np.zeros(A.shape[1])
-        L = linalg.norm(A) ** 2
-        x0 = np.zeros(A.shape[1])
-        x0 = x0 + np.dot(A.T, b - A.dot(x0)) / L
-        x0 = soft_thresh(x0, l / L)
+    if x0_init == "fista":
+        x0, pobj, times = fista(A, b, l, maxit=maxit,
+                                stop_if_energy_rises=True)
     elif x0_init == "random":
         x0 = setx0(A.shape[1], nstart)
     else:
         raise ValueError("Unknown value for x0_init parameter: %s" % x0_init)
 
+    maxit = maxit - len(pobj)
     results = hanso(func, grad,
                     x0=x0,
                     sampgrad=True,
                     maxit=maxit,
                     verbose=2
                     )
-    x0 = results[0]
-    pobj = results[-1]
+    x = results[0]
+    _pobj = results[-1]
 
-    times, pobj = map(np.array, zip(*pobj))
-    return x0, pobj, times
+    _times, _pobj = map(np.array, zip(*_pobj))
+    _times = concat_times(times, _times)
+    _pobj = list(pobj) + list(_pobj)
+
+    return x, _pobj, _times
 
 
-maxit = 1000  # 100000
+maxit = 100000
 
 # HANSO
 hanso_x0_init_modes = [
-    'random',
-    'soft_thresh_ista',
-    'soft_thresh_fista'
+    'fista',
+    'random'
     ]
 pobj_hanso = []
 times_hanso = []

@@ -74,7 +74,7 @@ def grad_nesterov(x, **kwargs):
 
 def tv(x):
     """
-    Total variation: l1-norm of gradient
+    Total Variation: l1-norm of gradient
 
     """
 
@@ -83,7 +83,7 @@ def tv(x):
 
 def grad_tv(x):
     """
-    Gradient of total variation
+    Gradient of Total Variation
 
     """
 

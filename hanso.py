@@ -13,7 +13,7 @@ from postprocess import postprocess
 
 
 def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
-          normtol=1e-6, verbose=2, fvalquit=-np.inf, cpumax=np.inf,
+          gradnormtol=1e-6, verbose=2, fvalquit=-np.inf, cpumax=np.inf,
           maxit=100, **kwargs):
     """
     HANSO: Hybrid Algorithm for Nonsmooth Optimization
@@ -51,7 +51,7 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
     fvalquit: float, optional (default -inf)
         param passed to bfgs1run function
 
-    normtol: float, optional (default 1e-4)
+    gradnormtol: float, optional (default 1e-4)
         termination tolerance for smallest vector in convex hull of saved
         gradients
 
@@ -173,7 +173,7 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
     # run BFGS step
     kwargs['output_records'] = 1
     x, f, d, H, _, info, X, G, w, pobj = bfgs(
-        func, grad, x0=x0, fvalquit=fvalquit, normtol=normtol, cpumax=cpumax,
+        func, grad, x0=x0, fvalquit=fvalquit, gradnormtol=gradnormtol, cpumax=cpumax,
         maxit=maxit, verbose=verbose, **kwargs)
 
     # throw away all but the best result
@@ -210,7 +210,7 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
                 f, loc['dnorm'], loc['evaldist']))
         return x, f, loc, X, G, w, H, pobj
 
-    if dnorm < normtol:
+    if dnorm < gradnormtol:
         _log('hanso: verified optimality within tolerance in bfgs phase')
         _log('hanso: best point found has f = %g with local optimality '
              'measure: dnorm = %5.1e, evaldist = %5.1e' % (
@@ -256,7 +256,7 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
                 G = G_BFGS
                 w = w_BFGS
         elif f < f_BFGS:
-            loc, X, G, w = postprocess(x, g, dnorm, X, G, w)
+            loc, X, G, w = postprocess(x, g, dnorm, X, G, w, verbose=verbose)
             _log('hanso: gradient sampling reduced f below best point found'
                  ' by BFGS\n')
         else:
@@ -329,7 +329,7 @@ if __name__ == '__main__':
                             sampgrad=True,
                             strongwolfe=strongwolfe,
                             maxit=1000,
-                            normtol=2 * 1e-3,
+                            gradnormtol=2 * 1e-3,
                             fvalquit=1e-4,
                             verbose=2
                             )

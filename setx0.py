@@ -6,7 +6,7 @@
 import numpy.random
 
 
-def setx0(nvar, nstart, **kwargs):
+def setx0(nvar, nstart=1, **kwargs):
     """
     set columns of x0 randomly if not provided by user
 
