@@ -197,7 +197,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
         return  x, f, d, H, 0, info, X, G, w, fevalrec, xrec, Hrec, times
 
     # enter: main loop
-    dnorm = linalg.norm(g, 2)  # initialize dnorm stopping creteria
+    dnorm = linalg.norm(g, 2)  # initialize dnorm stopping criterion
     f_old = f
     for it in xrange(maxit):
         p = -np.dot(H, g) if nvec == 0 else -hgprod(H, g, S, Y)
