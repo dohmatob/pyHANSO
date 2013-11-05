@@ -1,19 +1,19 @@
 #! /usr/bin/env python
 
-descr = """A set of python modules for neuroimaging..."""
+descr = """Python Implementation of Michael Overton's HANSO (Hybrid Algorithm for Non-Smooth Optimization)"""
 
 import sys
 import os
 import shutil
 
 DISTNAME = 'pyHANSO'
-DESCRIPTION = 'Statistical learning for neuroimaging in Python'
+DESCRIPTION = ''
 LONG_DESCRIPTION = open('README.md').read()
-MAINTAINER = 'Gael Varoquaux'
-MAINTAINER_EMAIL = 'gael.varoquaux@normalesup.org'
-URL = 'http://pyHANSO.github.com'
+MAINTAINER = 'DOHMATOB Elvis Dopgima'
+MAINTAINER_EMAIL = 'gmdopp@gmail.com'
+URL = 'http://github.com/dohmatob/pyHANSO'
 LICENSE = 'new BSD'
-DOWNLOAD_URL = 'http://pyHANSO.github.com'
+DOWNLOAD_URL = 'http://github.com/dohmatob/pyHANSO'
 VERSION = '0.1-git'
 
 from numpy.distutils.core import setup
@@ -35,7 +35,7 @@ def configuration(parent_package='', top_path=None):
     config = Configuration(None, parent_package, top_path)
 
     # main modules
-    config.add_subpackage('pyHANSO')
+    config.add_subpackage('hanso')
 
 
     return config
@@ -58,8 +58,8 @@ if __name__ == "__main__":
             shutil.rmtree(local_path)
         print("Copying source tree into build/py3k for 2to3 transformation"
               "...")
-        shutil.copytree(os.path.join(old_path, 'pyHANSO'),
-                        os.path.join(local_path, 'pyHANSO'))
+        shutil.copytree(os.path.join(old_path, 'hanso'),
+                        os.path.join(local_path, 'hanso'))
         import lib2to3.main
         from io import StringIO
         print("Converting to Python3 via 2to3...")

@@ -15,6 +15,9 @@ A good entry-point for the code would be to run,
 
         python ista_vs_fista_vs_hanso.py
 
+Or, 
+	python hanso/hanso.py
+
 TODO
 ====
 Modify code to use scipy's low-memory BGFS with HANSO's linesch_ww.
