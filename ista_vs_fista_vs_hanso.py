@@ -5,7 +5,7 @@ from scipy import linalg, signal
 import pylab as pl
 from pyHANSO.example_functions import l1, grad_l1, tv, grad_tv
 
-penalty_model = "tv+l1"
+penalty_model = "tv"
 
 rng = np.random.RandomState(42)  # pseudo-random number generator
 m, n, k = 100, 300, 10
@@ -33,7 +33,7 @@ x0[x0 < 0.3] = 0
 # tv+l1 sparse betamap
 # if penalty_model == "tv":
 #     x0 = signal.waveforms.square(rng.randn(n))
-if penalty_model in ['tv', 'tv+l1', 'l1']:
+if penalty_model in ['tv', 'tv+l1']:
     x0 = np.zeros(n)
     x0[10:80] = 1.
     x0[n // 2: n // 2 + 51] = 2.
@@ -233,11 +233,11 @@ def hanso(A, b, maxit, x0_init="random"):
     return x, _pobj, _times
 
 
-maxit = 100000
+maxit = 1000
 
 # HANSO
 hanso_x0_init_modes = [
-    # 'fista',
+    # fista",  # uncomment if penalty is l1 only
     'random'
     ]
 pobj_hanso = []
@@ -251,19 +251,20 @@ for x0_init in hanso_x0_init_modes:
     print "fmin %s: %s" % (optimizer, fmin_hanso)
     print
 
-# # ISTA
-# x_ista, pobj_ista, times_ista = ista(A, b, maxit)
-# fmin_ista = loss_function(A, b, x_ista)
-# print "xopt ISTA:", x_ista
-# print "fmin ISTA:", fmin_hanso
-# print
+if penalty_model == "l1":
+    # ISTA
+    x_ista, pobj_ista, times_ista = ista(A, b, maxit)
+    fmin_ista = loss_function(A, b, x_ista)
+    print "xopt ISTA:", x_ista
+    print "fmin ISTA:", fmin_hanso
+    print
 
-# # FISTA
-# x_fista, pobj_fista, times_fista = fista(A, b, maxit)
-# fmin_fista = loss_function(A, b, x_fista)
-# print "xopt FISTA:", x_fista
-# print "fmin FISTA:", fmin_fista
-# print
+    # FISTA
+    x_fista, pobj_fista, times_fista = fista(A, b, maxit)
+    fmin_fista = loss_function(A, b, x_fista)
+    print "xopt FISTA:", x_fista
+    print "fmin FISTA:", fmin_fista
+    print
 
 # repare for reporting
 pl.close('all')
@@ -280,8 +281,11 @@ for x0_init, times, pobj in zip(hanso_x0_init_modes,
                                 times_hanso, pobj_hanso):
     optimizer = "HANSO (%s x0 init)" % x0_init
     pl.plot(times, pobj, label=optimizer)
-# pl.plot(times_ista, pobj_ista, label='ista')
-# pl.plot(times_fista, pobj_fista, label='fista')
+
+if penalty_model == "l1":
+    pl.plot(times_ista, pobj_ista, label='ista')
+    pl.plot(times_fista, pobj_fista, label='fista')
+
 pl.xlabel('Time')
 pl.ylabel('Primal')
 pl.gca().set_xscale('log')
@@ -291,15 +295,16 @@ pl.legend()
 # plot betamaps
 pl.figure()
 
-if penalty_model in ['tv+l1', 'tv', 'l1']:
+if penalty_model in ['tv+l1', 'tv']:
     pl.plot(x0_true, label='True betamap')
     pl.plot(x0, label="Corrupt betamap")
 else:
     pl.plot(x0, label='True betamap')
 
 pl.plot(x_hanso, label='HANSO estimated betamap')
-# pl.plot(x_ista, '*-', label='ISTA estimated betamap')
-# pl.plot(x_fista, '^-', label='FISTA estimated betamap')
+if penalty_model == "l1":
+    pl.plot(x_ista, '*-', label='ISTA estimated betamap')
+    pl.plot(x_fista, '^-', label='FISTA estimated betamap')
 pl.ylabel("beta values (i.e regression coffients)")
 pl.xlabel("conditions")
 pl.legend()
