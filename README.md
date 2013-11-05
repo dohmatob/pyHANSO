@@ -3,6 +3,14 @@ pyHANSO
 
 pyHANSO: Python Implementation of Michael Overton's [HANSO](http://www.cs.nyu.edu/faculty/overton/software/hanso/index.html) (Hybrid Algorithm for Non-Smooth Optimization)
 
+
+Installation
+============
+
+	python setup.py  install --user
+
+Examples
+========
 A good entry-point for the code would be to run,
 
         python ista_vs_fista_vs_hanso.py
