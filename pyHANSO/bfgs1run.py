@@ -267,6 +267,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
         else:  # nG = ngrad
             G = np.vstack((g, G[..., :ngrad - 1].T)).T
             X = np.vstack((x, X[..., :ngrad - 1].T)).T
+
         # optimality check: compute smallest vector in convex hull
         # of qualifying gradients: reduces to norm of latest gradient
         # if ngrad = 1, and the set
@@ -361,6 +362,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
             info = 4
             times.append((time.time() - time0, f))
             return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
+
         s = (alpha * p).reshape((-1, 1))
         y = g - gprev
         sty = np.dot(s.T, y)  # successful line search ensures this is positive

@@ -3,12 +3,12 @@ from math import sqrt
 import numpy as np
 from scipy import linalg, signal
 import pylab as pl
-from example_functions import l1, grad_l1, tv, grad_tv
+from pyHANSO.example_functions import l1, grad_l1, tv, grad_tv
 
 penalty_model = "tv+l1"
 
 rng = np.random.RandomState(42)  # pseudo-random number generator
-m, n, k = 100, 300, 10
+m, n, k = 100, 1000, 10
 design = "convolutional"
 alpha = 1.  # param for tv+l1
 rho = .7  # param for tv+l1
@@ -31,9 +31,9 @@ x0 = rng.rand(n)
 x0[x0 < 0.3] = 0
 
 # tv+l1 sparse betamap
-if penalty_model == "tv":
-    x0 = signal.waveforms.square(rng.randn(n))
-elif penalty_model == 'tv+l1':
+# if penalty_model == "tv":
+#     x0 = signal.waveforms.square(rng.randn(n))
+if penalty_model in ['tv', 'tv+l1', 'l1']:
     x0 = np.zeros(n)
     x0[10:80] = 1.
     x0[n // 2: n // 2 + 51] = 2.
@@ -162,10 +162,10 @@ def hanso(A, b, maxit, x0_init="random"):
 
     """
 
-    from hanso import hanso
-    from setx0 import setx0
+    from pyHANSO.hanso import hanso
+    from pyHANSO.setx0 import setx0
 
-    nstart = 1  # 20
+    nstart = 1
 
     def func(x):
         return loss_function(A, b, x)
@@ -220,6 +220,7 @@ def hanso(A, b, maxit, x0_init="random"):
                     x0=x0,
                     sampgrad=True,
                     maxit=maxit,
+                    nvec=10,
                     verbose=2
                     )
     x = results[0]
@@ -266,7 +267,7 @@ for x0_init in hanso_x0_init_modes:
 
 # repare for reporting
 pl.close('all')
-if penalty_model in ['l', 'tv']:
+if penalty_model in ['l1', 'tv']:
     params = "lambda = %g" % lambd
 elif penalty_model == "tv+l1":
     params = "alpha = %g, rho = %g" % (alpha, rho)
@@ -290,7 +291,7 @@ pl.legend()
 # plot betamaps
 pl.figure()
 
-if penalty_model == 'tv+l1':
+if penalty_model in ['tv+l1', 'tv', 'l1']:
     pl.plot(x0_true, label='True betamap')
     pl.plot(x0, label="Corrupt betamap")
 else:
