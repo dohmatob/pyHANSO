@@ -11,5 +11,7 @@ TODO
 ====
 Modify code to use scipy's low-memory BGFS with HANSO's linesch_ww.
 
+Send Bugs To
+=============
 DOHMATOB Elvis Dopgima <gmdopp@gmail.com> <elvis.dohmatob@inria.fr>
 
