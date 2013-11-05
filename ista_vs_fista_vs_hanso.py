@@ -8,7 +8,7 @@ from pyHANSO.example_functions import l1, grad_l1, tv, grad_tv
 penalty_model = "tv+l1"
 
 rng = np.random.RandomState(42)  # pseudo-random number generator
-m, n, k = 100, 1000, 10
+m, n, k = 100, 300, 10
 design = "convolutional"
 alpha = 1.  # param for tv+l1
 rho = .7  # param for tv+l1
