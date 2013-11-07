@@ -1,7 +1,7 @@
 pyHANSO
 =======
 
-pyHANSO: Python Implementation of Michael Overton's [HANSO](http://www.cs.nyu.edu/faculty/overton/software/hanso/index.html) (Hybrid Algorithm for Non-Smooth Optimization)
+pyHANSO: Python Implementation of Michael Overton's [HANSO](http://www.cs.nyu.edu/~overton/papers/pdffiles/bfgs_inexactLS.pdf) (Hybrid Algorithm for Non-Smooth Optimization)
 
 
 Installation
@@ -17,7 +17,7 @@ A good entry-point for the code would be to run,
 
 Or, 
 
-	python hanso/hanso.py
+		python hanso/hanso.py
 
 TODO
 ====
