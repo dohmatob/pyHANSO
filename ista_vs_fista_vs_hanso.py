@@ -220,7 +220,6 @@ def hanso(A, b, maxit, x0_init="random"):
 
     return x, _pobj, _times
 
-
 maxit = 1000
 
 # HANSO
