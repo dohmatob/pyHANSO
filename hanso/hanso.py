@@ -12,9 +12,9 @@ from gradsamp import gradsamp
 from postprocess import postprocess
 
 
-def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
-          gradnormtol=1e-6, verbose=2, fvalquit=-np.inf, cpumax=np.inf,
-          maxit=100, **kwargs):
+def hanso(func, x0=None, grad=None, nvar=None, nstart=None, sampgrad=False,
+          funcrtol=1e-20, gradnormtol=1e-6, verbose=2, fvalquit=-np.inf,
+          cpumax=np.inf, maxit=100, **kwargs):
     """
     HANSO: Hybrid Algorithm for Nonsmooth Optimization
 
@@ -173,8 +173,9 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
     # run BFGS step
     kwargs['output_records'] = 1
     x, f, d, H, _, info, X, G, w, pobj = bfgs(
-        func, grad, x0=x0, fvalquit=fvalquit, gradnormtol=gradnormtol, cpumax=cpumax,
-        maxit=maxit, verbose=verbose, **kwargs)
+        func, x0=x0, grad=grad, fvalquit=fvalquit, funcrtol=funcrtol,
+        gradnormtol=gradnormtol, cpumax=cpumax, maxit=maxit,
+        verbose=verbose, **kwargs)
 
     # throw away all but the best result
     assert len(f) == np.array(x).shape[1], np.array(x).shape
@@ -242,7 +243,7 @@ def hanso(func, grad, x0=None, nvar=None, nstart=None, sampgrad=False,
         cpumax = cpufinish - time.time()  # time left
 
         # run gradsamp proper
-        x, f, g, dnorm, X, G, w = gradsamp(func, grad, x0, maxit,
+        x, f, g, dnorm, X, G, w = gradsamp(func, x0, grad=grad, maxit=maxit,
                                            cpumax=cpumax)
 
         if f == f_BFGS:  # gradient sampling did not reduce f
@@ -276,11 +277,11 @@ if __name__ == '__main__':
     import os
     import scipy.io
     import matplotlib.pyplot as plt
+
     func_names = [
         "tv",
         'Nesterov',
         'Rosenbrock "banana"',
-        'l2-norm',  # this is smooth and convex, we're only being ironic here
         'l1-norm',
         ]
     wolfe_kinds = [0,  # weak
@@ -324,8 +325,8 @@ if __name__ == '__main__':
 
         for strongwolfe in wolfe_kinds:
             # run BFGS
-            results = hanso(func, grad,
-                            x0=x0,
+            results = hanso(func, x0=x0,
+                            grad=grad,
                             sampgrad=True,
                             strongwolfe=strongwolfe,
                             maxit=1000,
@@ -333,6 +334,7 @@ if __name__ == '__main__':
                             fvalquit=1e-4,
                             verbose=2
                             )
+
             xmin, fmin = results[:2]
             pobj = results[-1]
 

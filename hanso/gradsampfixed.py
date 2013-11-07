@@ -11,9 +11,9 @@ from getbundle import getbundle
 from qpspecial import qpspecial
 
 
-def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
-                  gradnormtol=1e-6, fvalquit=-np.inf, cpumax=np.inf,
-                  verbose=2, ngrad=None, **kwargs):
+def gradsampfixed(func, x0, grad=None, f0=None, g0=None, samprad=1e-4,
+                  maxit=10, gradnormtol=1e-6, fvalquit=-np.inf,
+                  cpumax=np.inf, verbose=2, ngrad=None, **kwargs):
     """"
     Gradient sampling minimization with fixed sampling radius
     intended to be called by gradsamp1run only
@@ -21,20 +21,36 @@ def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
 
     Parameters
     ----------
-    func: callable function on 1D arrays of length nvar
-        function being optimized
+    func : callable func(x)
+        function to minimise.
 
-    grad: callable function
-        gradient of func
+    x0: 1D array of len nvar, optional (default None)
+        intial point
 
-    x0: 2D array of shape (nvar, nstart), optional (default None)
-        intial points, one per column
+    grad : callable grad(x, *args)
+        the gradient of `func`.  If None, then `func` returns the function
+        value and the gradient (``f, g = func(x, *args)``), unless
+        `approx_grad` is True in which case `func` returns only ``f``.
+
+    f0: float, optional (default None)
+        function value at x0
+
+    g0: 1D array of length nvar = len(x0), optional (default None)
+        gradient at x0
+
+    samprad: float, optional (default 1e-4)
+        radius around x0, for sampling gradients
+
+    See for example bfgs1run for the meaning of the other params.
 
     See Also
     --------
     `bfgs` and `bfgs1run`
 
     """
+
+    def _fg(x):
+        return func(x) if grad is None else func(x), grad(x)
 
     def _log(msg, level=0):
         if verbose > level:
@@ -43,8 +59,8 @@ def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
     _log('gradsamp: sampling radius = %7.1e' % samprad)
 
     x = np.array(x0)
-    f0 = func(x0) if f0 is None else f0
-    g0 = grad(x0) if g0 is None else g0
+    f0 = _fg(x0)[0] if f0 is None else f0
+    g0 = _fg(x0)[1] if g0 is None else g0
     f = f0
     g = g0
     X = x
@@ -56,7 +72,8 @@ def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
     for it in xrange(maxit):
         # evaluate gradients at randomly generated points near x
         # first column of Xnew and Gnew are respectively x and g
-        Xnew, Gnew = getbundle(func, grad, x, g0=g, samprad=samprad, n=ngrad)
+        Xnew, Gnew = getbundle(func, x, grad=grad, g0=g,
+                               samprad=samprad, n=ngrad)
 
         # solve QP subproblem
         wnew, dnew, _, _ = qpspecial(Gnew, verbose=verbose)
@@ -86,7 +103,7 @@ def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
         wolfe1 = 0
         wolfe2 = 0
         alpha, x, f, g, fail, _, _, _ = linesch_ww(
-            x, func, grad, dnew, func0=f, grad0=g, wolfe1=wolfe1,
+            func, x, dnew, grad=grad, func0=f, grad0=g, wolfe1=wolfe1,
             wolfe2=wolfe2, fvalquit=fvalquit, verbose=verbose)
         _log('  iter %d: step = %5.1e, f = %g, dnorm = %5.1e' % (
                 it, alpha, f, dnormnew), level=1)
@@ -117,8 +134,8 @@ def gradsampfixed(func, grad, x0, f0=None, g0=None, samprad=1e-4, maxit=10,
 if __name__ == '__main__':
     from example_functions import (l1 as func,
                                    grad_l1 as grad)
-    x, f, g, dnorm, X, G, w, quitall = gradsampfixed(func, grad,
-                                                     [1e-6, -1e-6])
+    x, f, g, dnorm, X, G, w, quitall = gradsampfixed(
+        func, [1e-6, -1e-6], grad=grad)
     print "fmin:", f
     print "xopt:", x
     assert X.shape[0] == 2

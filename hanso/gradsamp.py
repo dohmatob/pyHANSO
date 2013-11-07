@@ -9,7 +9,8 @@ from scipy import linalg
 from gradsamp1run import gradsamp1run
 
 
-def gradsamp(func, grad, x0, maxit=10, cpumax=np.inf, verbose=1, **kwargs):
+def gradsamp(func, x0, grad=None, maxit=10, cpumax=np.inf, verbose=1,
+             **kwargs):
     """
     GRADSAMP Gradient sampling algorithm for nonsmooth, nonconvex
     minimization.
@@ -24,11 +25,30 @@ def gradsamp(func, grad, x0, maxit=10, cpumax=np.inf, verbose=1, **kwargs):
     A Robust Gradient Sampling Algorithm for Nonsmooth, Nonconvex Optimization
     SIAM J. Optimization, 2005
 
+    Parameters
+    ----------
+    func : callable func(x)
+        function to minimise.
+
+    x0: 1D array of len nvar or 2D array of shape (nvar, nstart),
+    optional (default None)
+        point(s) around which gradients will be sampled
+
+    grad : callable grad(x, *args)
+        the gradient of `func`.  If None, then `func` returns the function
+        value and the gradient (``f, g = func(x, *args)``), unless
+        `approx_grad` is True in which case `func` returns only ``f``.
+
+    See for example bfgs1run for the meaning of the other params.
+
     See Also
     --------
     `bfgs`
 
     """
+
+    def _fg(x):
+        return func(x) if grad is None else (func(x), grad(x))
 
     def _log(msg, level=0):
         if verbose > level:
@@ -47,7 +67,7 @@ def gradsamp(func, grad, x0, maxit=10, cpumax=np.inf, verbose=1, **kwargs):
     for run in xrange(nstart):
         if verbose > 0 & nstart > 1:
             _log('gradsamp: starting point %d ' % run)
-        f0, g0 = func(x0[..., run]), grad(x0[..., run])
+        f0, g0 = _fg(x0[..., run])
         if np.isnan(f0) or f0 == np.inf or maxit == 0:
             if np.isnan(f0) and verbose > 0:
                 _log('gradsamp: function is NaN at initial point')
@@ -69,7 +89,8 @@ def gradsamp(func, grad, x0, maxit=10, cpumax=np.inf, verbose=1, **kwargs):
         else:
             cpumax = cpufinish - time.time()  # time left
             xtmp, ftmp, gtmp, dnormtmp, Xtmp, Gtmp, wtmp = \
-                gradsamp1run(func, grad, x0[..., run], f0=f0, g0=g0, **kwargs)
+                gradsamp1run(func, x0[..., run], grad=grad, f0=f0, g0=g0,
+                             **kwargs)
             x.append(xtmp)
             f.append(ftmp)
             g.append(gtmp)
@@ -87,8 +108,6 @@ if __name__ == '__main__':
     from example_functions import (l1 as func,
                                    grad_l1 as grad)
     x0 = setx0(20, 10)
-    x, f, g, dnorm, X, G, w = gradsamp(func, grad, x0)
+    x, f, g, dnorm, X, G, w = gradsamp(func, x0, grad=grad)
     print "fmin:", f
     print "xopt:", x
-    assert X.shape[0] == 2, X.shape
-    assert G.shape[0] == 2

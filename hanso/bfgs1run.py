@@ -16,7 +16,7 @@ from qpspecial import qpspecial
 from linesch_ww import linesch_ww
 
 
-def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
+def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
              gradnormtol=1e-4, fvalquit=-np.inf, xnormquit=np.inf,
              cpumax=np.inf, strongwolfe=False, wolfe1=0, wolfe2=.5,
              quitLSfail=1, ngrad=None, evaldist=1e-4, H0=None, scale=1):
@@ -26,14 +26,16 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
 
     Parameters
     ----------
-    func: callable function on 1D arrays of length nvar
-        function being optimized
-
-    grad: callable function
-        gradient of func
+    func : callable func(x)
+        function to minimise.
 
     x0: 1D array of len nvar, optional (default None)
         intial point
+
+    grad : callable grad(x, *args)
+        the gradient of `func`.  If None, then `func` returns the function
+        value and the gradient (``f, g = func(x, *args)``), unless
+        `approx_grad` is True in which case `func` returns only ``f``.
 
     nvar: int, optional (default None)
         number of dimensions in the problem (exclusive x0)
@@ -153,6 +155,9 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
 
     """
 
+    def _fg(x):
+        return func(x) if grad is None else (func(x), grad(x))
+
     def _log(msg, level=0):
         if verbose > level:
             print msg
@@ -181,8 +186,8 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
     times = []
 
     # first evaluation
-    f, g = func(x), grad(x)
-    times.append((time.time() - time0, f))
+    f, g = _fg(x)
+    # times.append((time.time() - time0, f))
 
     # check that all is still well
     d = np.array(g)
@@ -226,7 +231,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
                     ' NLCG distribution')
 
             alpha, x, f, g, fail, _, _, fevalrecline = linesch_sw(
-                x, func, grad, p, wolfe1=wolfe1, wolfe2=wolfe2,
+                func, x, p, grad=grad, wolfe1=wolfe1, wolfe2=wolfe2,
                 fvalquit=fvalquit, verbose=verbose)
 
             # function values are not returned in strongwolfe, so set
@@ -246,7 +251,7 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
         else:
             _log("Starting inexact line search (weak Wolfe) ...")
             alpha, x, f, g, fail, _, _, fevalrecline = linesch_ww(
-                x, func, grad, p, wolfe1=wolfe1, wolfe2=wolfe2,
+                func, x, p, grad=grad, wolfe1=wolfe1, wolfe2=wolfe2,
                 fvalquit=fvalquit, verbose=verbose)
             _log("... done.")
 
@@ -316,8 +321,9 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
                 _log('bfgs1run: continue although line search failed',
                      level=1)
             else:  # quit since line search failed
-                _log('bfgs1run: quitting after %d iteration(s), f = %g, '
-                     'dnorm = %5.1e' % (it + 1, f, dnorm))
+                _log(('bfgs1run: line search failed. Quitting after %d '
+                      'iteration(s), f = %g, dnorm = %5.1e' % (
+                            it + 1, f, dnorm)))
                 info = 7
                 times.append((time.time() - time0, f))
                 return  (x, f, d, H, it, info, X, G, w, fevalrec, xrec,
@@ -403,13 +409,13 @@ def bfgs1run(x0, func, grad, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
         else:  # save s and y vectors for limited memory update
             s = alpha * p
             y = g - gprev
-            if it + 1 <= nvec:
-                S = np.hstack((S, s))
-                Y = np.hstack((Y, y))
+            if it < nvec:
+                S = np.vstack((S.T, s)).T if len(S) else s
+                Y = np.vstack((Y.T, y)).T if len(Y) else y
             # could be more efficient here by avoiding moving the columns
             else:
-                S = np.hstack((S[..., 1:nvec], s))
-                Y = np.hstack((Y[..., 1:nvec], y))
+                S = np.vstack((S[..., 1:nvec].T, s)).T
+                Y = np.vstack((Y[..., 1:nvec].T, y)).T
             if scale:
                 # recommended by Nocedal-Wright
                 H = np.dot(np.dot(s.T, y), np.dot(np.dot(y.T, y), H0))
@@ -445,19 +451,12 @@ if __name__ == '__main__':
     _f = np.inf
     for j in xrange(x0.shape[1]):
         print ">" * 100, "(j = %i)" % j
-        x, f = bfgs1run(x0[..., j], l1, grad_l1,
-                        strongwolfe=0,
+        x, f = bfgs1run(l1,
+                        x0[..., j],
+                        grad=grad_l1,
                         maxit=100,
                         verbose=2,
-                        gradnormtol=1e-6,
-                        xnormquit=np.inf,
-                        fvalquit=-np.inf,
-                        cpumax=np.inf,
-                        wolfe1=0,
-                        wolfe2=.5,
-                        nvec=0,
-                        scale=1,
-                        evaldist=1e-6
+                        nvec=10
                         )[:2]
         if f < _f:
             _f = f

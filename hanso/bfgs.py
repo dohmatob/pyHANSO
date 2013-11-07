@@ -10,10 +10,11 @@ from bfgs1run import bfgs1run
 from setx0 import setx0
 
 
-def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
-         verbose=1, gradnormtol=1e-6, fvalquit=-np.inf, xnormquit=np.inf,
-         cpumax=np.inf, strongwolfe=False, wolfe1=0, wolfe2=.5, quitLSfail=1,
-         ngrad=None, evaldist=1e-6, H0=None, scale=1, output_records=2
+def bfgs(func, x0=None, grad=None, nvar=None, nstart=None, maxit=100, nvec=0,
+         verbose=1, funcrtol=1e-20, gradnormtol=1e-6, fvalquit=-np.inf,
+         xnormquit=np.inf, cpumax=np.inf, strongwolfe=False, wolfe1=0,
+         wolfe2=.5, quitLSfail=1, ngrad=None, evaldist=1e-6, H0=None, scale=1,
+         output_records=2
          ):
     """
     Make a single run of BFGS from one starting point. Intended to be
@@ -172,6 +173,9 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
 
     """
 
+    def _fg(x):
+        return func(x) if grad is None else func(x), grad(x)
+
     def _log(msg, level=0):
         if verbose > level:
             print msg
@@ -220,10 +224,11 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
         cpumax = cpufinish - time.time()
         if output_records > 1:
             x, f, d, HH, it, info, X, G, w, fevalrec, xrec, Hrec, times = \
-                bfgs1run(x0[..., run], func, grad, maxit=maxit, wolfe1=wolfe1,
-                         wolfe2=wolfe2, gradnormtol=gradnormtol,
-                         fvalquit=fvalquit, xnormquit=xnormquit, cpumax=cpumax,
-                         strongwolfe=strongwolfe, verbose=verbose,
+                bfgs1run(func, x0[..., run], grad=grad, maxit=maxit,
+                         wolfe1=wolfe1, wolfe2=wolfe2, funcrtol=funcrtol,
+                         gradnormtol=gradnormtol, fvalquit=fvalquit,
+                         xnormquit=xnormquit, cpumax=cpumax,
+                         strongwolfe=strongwolfe, nvec=nvec,  verbose=verbose,
                          quitLSfail=quitLSfail, ngrad=ngrad, evaldist=evaldist,
                          H0=H0, scale=scale)
             _x.append(x)
@@ -239,11 +244,12 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
             Hrecs.append(Hrec)
         elif output_records > 0:
             x, f, d, HH, it, info, X, G, w, _, _, _, times = bfgs1run(
-                x0[..., run], func, grad, maxit=maxit, wolfe1=wolfe1,
-                wolfe2=wolfe2, gradnormtol=gradnormtol, fvalquit=fvalquit,
-                xnormquit=xnormquit, cpumax=cpumax, strongwolfe=strongwolfe,
-                verbose=verbose, quitLSfail=quitLSfail, ngrad=ngrad,
-                evaldist=evaldist, H0=H0, scale=scale)
+                func, x0[..., run], grad=grad, maxit=maxit, wolfe1=wolfe1,
+                wolfe2=wolfe2, funcrtol=funcrtol, gradnormtol=gradnormtol,
+                fvalquit=fvalquit, xnormquit=xnormquit, cpumax=cpumax,
+                strongwolfe=strongwolfe, nvec=nvec, verbose=verbose,
+                quitLSfail=quitLSfail, ngrad=ngrad, evaldist=evaldist, H0=H0,
+                scale=scale)
             _x.append(x)
             _f.append(f)
             _d.append(d)
@@ -254,11 +260,12 @@ def bfgs(func, grad, x0=None, nvar=None, nstart=None, maxit=100, nvec=0,
             wrecs.append(w)
         else:  # avoid computing unnecessary arrays
             x, f, d, HH, it, info, _, _, _, _, _, _, times = bfgs1run(
-                x0[..., run], func, grad, maxit=maxit, wolfe1=wolfe1,
-                wolfe2=wolfe2, gradnormtol=gradnormtol, fvalquit=fvalquit,
-                xnormquit=xnormquit, cpumax=cpumax, strongwolfe=strongwolfe,
-                verbose=verbose, quitLSfail=quitLSfail, ngrad=ngrad,
-                evaldist=evaldist, H0=H0, scale=scale)
+                func, x0[..., run], grad=grad, maxit=maxit, wolfe1=wolfe1,
+                wolfe2=wolfe2, funcrtol=funcrtol, gradnormtol=gradnormtol,
+                fvalquit=fvalquit, xnormquit=xnormquit, cpumax=cpumax,
+                strongwolfe=strongwolfe, nvec=nvec, verbose=verbose,
+                quitLSfail=quitLSfail, ngrad=ngrad, evaldist=evaldist, H0=H0,
+                scale=scale)
             _x.append(x)
             _f.append(f)
             _d.append(d)
@@ -328,7 +335,7 @@ if __name__ == '__main__':
 
         for strongwolfe in wolfe_kinds:
             # run BFGS
-            fevalrecs = bfgs(func, grad, nvar=nvar, nstart=nstart,
+            fevalrecs = bfgs(func, grad=grad, nvar=nvar, nstart=nstart,
                              strongwolfe=strongwolfe,
                              maxit=10,
                              verbose=2

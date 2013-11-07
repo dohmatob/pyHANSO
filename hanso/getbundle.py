@@ -6,7 +6,7 @@
 import numpy as np
 
 
-def getbundle(func, grad, x0, g0=None, samprad=1e-4, n=None):
+def getbundle(func, x0, grad=None, g0=None, samprad=1e-4, n=None):
     """
     Get bundle of n-1 gradients at points near x, in addition to g,
     which is gradient at x and goes in first column
@@ -46,18 +46,20 @@ def getbundle(func, grad, x0, g0=None, samprad=1e-4, n=None):
 
     """
 
+    def _fg(x):
+        return func(x) if grad is None else (func(x), grad(x))
+
     x0 = np.ravel(x0)
     nvar = len(x0)
     n = min(100, min(2 * nvar, nvar + 10)) if n is None else n
-
     xbundle = np.ndarray((nvar, n))
     gbundle = np.ndarray((nvar, n))
     xbundle[..., 0] = x0
-    gbundle[..., 0] = g0 if not g0 is None else grad(x0)
+    gbundle[..., 0] = g0 if not g0 is None else _fg(x0)[1]
     for k in xrange(1, n):  # note the 1
         xpert = x0 + samprad * (np.random.rand(nvar) - 0.5
                                )  # uniform distribution
-        f, g = func(xpert), grad(xpert)
+        f, g = _fg(xpert)
         count = 0
         # in particular, disallow infinite function values
         while np.isnan(f) or np.isinf(f) or np.any(

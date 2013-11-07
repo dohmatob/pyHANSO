@@ -37,11 +37,11 @@ if penalty_model in ['tv', 'tv+l1']:
     x0 = np.zeros(n)
     x0[10:80] = 1.
     x0[n // 2: n // 2 + 51] = 2.
-    x0_true = np.array(x0)
-    x0 += rng.randn(n) * 1e-1  # add noise
+    x0[230:280] = -np.pi
 
 # observed signal
 b = np.dot(A, x0)
+b += rng.randn(len(b)) * 1e-1  # add noise
 
 
 def concat_times(times1, times2):
@@ -162,48 +162,36 @@ def hanso(A, b, maxit, x0_init="random"):
 
     """
 
-    from pyHANSO.hanso import hanso
-    from pyHANSO.setx0 import setx0
+    from hanso.hanso import hanso
+    from hanso.setx0 import setx0
 
     nstart = 1
 
-    def func(x):
-        return loss_function(A, b, x)
+    def fg_with_tv_plus_l1_penalty(x):
+        z = np.dot(A, x) - b
+        return (.5 * linalg.norm(z) ** 2 + lambd * l1(x),
+                 np.dot(A.T, z) + lambd * grad_l1(x))
 
-    def grad_with_l1_penalty(x):
-        """
-        Gradient of loss function when penalty model is l1
+    def fg_with_l1_penalty(x):
+        z = np.dot(A, x) - b
+        return (.5 * linalg.norm(z) ** 2 + lambd * l1(x),
+                 np.dot(A.T, z) + lambd * grad_l1(x))
 
-        """
-        return np.dot(A.T, np.dot(A, x) - b) + lambd * grad_l1(x)
-
-    def grad_with_tv_penalty(x):
-        """
-        Gradient of loss function when penalty model is tv
-
-        """
-
-        return np.dot(A.T, np.dot(A, x) - b) + lambd * grad_tv(x)
-
-    def grad_with_tv_plus_l1_penalty(x):
-        """
-        Gradient of loss function when penalty model is tv + l1
-
-        """
-
-        return np.dot(A.T, np.dot(A, x) - b) + alpha * (rho * grad_tv(x) + (
-                1 - rho) * grad_l1(x))
+    def fg_with_tv_penalty(x):
+        z = np.dot(A, x) - b
+        return (.5 * linalg.norm(z) ** 2 + lambd * tv(x),
+                 np.dot(A.T, z) + lambd * grad_tv(x))
 
     pobj = []
     times = []
 
     # penalty dependent gradient definition
     if penalty_model == "l1":
-        grad = grad_with_l1_penalty
+        fg = fg_with_l1_penalty
     elif penalty_model == "tv":
-        grad = grad_with_tv_penalty
+        fg = fg_with_tv_penalty
     elif penalty_model == "tv+l1":
-        grad = grad_with_tv_plus_l1_penalty
+        fg = fg_with_tv_plus_l1_penalty
     else:
         raise ValueError("Unknown penalty model: %s" % penalty_model)
 
@@ -216,11 +204,11 @@ def hanso(A, b, maxit, x0_init="random"):
         raise ValueError("Unknown value for x0_init parameter: %s" % x0_init)
 
     maxit = maxit - len(pobj)
-    results = hanso(func, grad,
+    results = hanso(fg,
                     x0=x0,
                     sampgrad=True,
                     maxit=maxit,
-                    nvec=10,
+                    nvec=0,
                     verbose=2
                     )
     x = results[0]
@@ -237,7 +225,7 @@ maxit = 1000
 
 # HANSO
 hanso_x0_init_modes = [
-    # fista",  # uncomment if penalty is l1 only
+    "fista",  # uncomment if penalty is l1 only
     'random'
     ]
 pobj_hanso = []
@@ -296,8 +284,7 @@ pl.legend()
 pl.figure()
 
 if penalty_model in ['tv+l1', 'tv']:
-    pl.plot(x0_true, label='True betamap')
-    pl.plot(x0, label="Corrupt betamap")
+    pl.plot(x0, label='True betamap')
 else:
     pl.plot(x0, label='True betamap')
 

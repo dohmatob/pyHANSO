@@ -8,8 +8,8 @@ import numpy as np
 from scipy import linalg
 
 
-def linesch_ww(x0, func, grad, d, func0=None, grad0=None, wolfe1=0, wolfe2=.5,
-               fvalquit=-np.inf, verbose=1):
+def linesch_ww(func, x0, d, grad=None, func0=None, grad0=None, wolfe1=0,
+               wolfe2=.5, fvalquit=-np.inf, verbose=1):
     """
     LINESCH_WW Line search enforcing weak Wolfe conditions, suitable
     for minimizing both smooth and nonsmooth functions
@@ -63,6 +63,14 @@ def linesch_ww(x0, func, grad, d, func0=None, grad0=None, wolfe1=0, wolfe2=.5,
 
     d: 1D array of length nvar
        search direction
+
+    func : callable func(x)
+        function to minimise.
+
+    grad : callable grad(x, *args)
+        the gradient of `func`.  If None, then `func` returns the function
+        value and the gradient (``f, g = func(x, *args)``), unless
+        `approx_grad` is True in which case `func` returns only ``f``.
 
     wolfe1: float, optional (default 0)
        Wolfe parameter for the sufficient decrease condition
@@ -127,14 +135,17 @@ def linesch_ww(x0, func, grad, d, func0=None, grad0=None, wolfe1=0, wolfe2=.5,
 
     """
 
+    def _fg(x):
+        return func(x) if grad is None else (func(x), grad(x))
+
     def _log(msg, level=0):
         if verbose > level:
             print msg
 
     x0 = np.array(x0)
     d = np.array(d)
-    func0 = func(x0) if func0 is None else func0
-    grad0 = grad(x0) if grad0 is None else grad0
+    func0 = _fg(x0)[0] if func0 is None else func0
+    grad0 = _fg(x0)[1] if grad0 is None else grad0
 
     if (wolfe1 < 0 or wolfe1 > wolfe2 or wolfe2 > 1
         ):  # allows wolfe1 = 0, wolfe2 = 0 and wolfe2 = 1
@@ -176,7 +187,7 @@ def linesch_ww(x0, func, grad, d, func0=None, grad0=None, wolfe1=0, wolfe2=.5,
     while not done:
         x = x0 + t * d
         nfeval = nfeval + 1
-        f, g = func(x), grad(x)
+        f, g = _fg(x)
         fevalrec.append(f)
         if f < fvalquit:  # nothing more to do, quit
             fail = 0
@@ -243,4 +254,4 @@ def linesch_ww(x0, func, grad, d, func0=None, grad0=None, wolfe1=0, wolfe2=.5,
 
 if __name__ == '__main__':
     from example_functions import l1, grad_l1
-    print linesch_ww([1, 1], l1, grad_l1, [-1, -2])
+    print linesch_ww([1, 1], [-1, -2], l1, grad_l1)
