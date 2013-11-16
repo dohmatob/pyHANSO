@@ -14,7 +14,7 @@ from postprocess import postprocess
 
 def hanso(func, x0=None, grad=None, nvar=None, nstart=None, sampgrad=False,
           funcrtol=1e-20, gradnormtol=1e-6, verbose=2, fvalquit=-np.inf,
-          cpumax=np.inf, maxit=100, **kwargs):
+          cpumax=np.inf, maxit=100, callback=None, **kwargs):
     """
     HANSO: Hybrid Algorithm for Nonsmooth Optimization
 
@@ -175,7 +175,7 @@ def hanso(func, x0=None, grad=None, nvar=None, nstart=None, sampgrad=False,
     x, f, d, H, _, info, X, G, w, pobj = bfgs(
         func, x0=x0, grad=grad, fvalquit=fvalquit, funcrtol=funcrtol,
         gradnormtol=gradnormtol, cpumax=cpumax, maxit=maxit,
-        verbose=verbose, **kwargs)
+        verbose=verbose, callback=callback, **kwargs)
 
     # throw away all but the best result
     assert len(f) == np.array(x).shape[1], np.array(x).shape
@@ -267,9 +267,12 @@ def hanso(func, x0=None, grad=None, nvar=None, nstart=None, sampgrad=False,
 
         x = x[0]
         f = f[0]
-        # pobj.append((time.time() - time0, f))
+        if callback:
+            callback(x)
         return x, f, loc, X, G, w, H, pobj
     else:
+        if callback:
+            callback(x)
         return x, f, loc, X, G, w, H, pobj
 
 
@@ -280,8 +283,8 @@ if __name__ == '__main__':
 
     func_names = [
         "tv",
-        'Nesterov',
-        'Rosenbrock "banana"',
+        # 'Nesterov',
+        # 'Rosenbrock "banana"',
         'l1-norm',
         ]
     wolfe_kinds = [0,  # weak
@@ -289,8 +292,8 @@ if __name__ == '__main__':
                    ]
 
     for func_name, j in zip(func_names, xrange(len(func_names))):
-        nstart = 20
-        nvar = 300
+        nstart = 1
+        nvar = 64000
         if func_name == "tv":
             from example_functions import (tv as func,
                                            grad_tv as grad)
@@ -332,6 +335,8 @@ if __name__ == '__main__':
                             maxit=1000,
                             gradnormtol=2 * 1e-3,
                             fvalquit=1e-4,
+                            nvec=10,
+                            ngrad=10,
                             verbose=2
                             )
 

@@ -26,11 +26,11 @@ def l1(x):
 
     """
 
-    return 1. * linalg.norm(x, 1)
+    return linalg.norm(x, 1)
 
 
 def grad_l1(x):
-    return np.sign(x)
+    return x / np.abs(x)
 
 
 def rosenbrock_banana(x, **kwargs):

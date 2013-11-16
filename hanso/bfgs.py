@@ -14,8 +14,7 @@ def bfgs(func, x0=None, grad=None, nvar=None, nstart=None, maxit=100, nvec=0,
          verbose=1, funcrtol=1e-20, gradnormtol=1e-6, fvalquit=-np.inf,
          xnormquit=np.inf, cpumax=np.inf, strongwolfe=False, wolfe1=0,
          wolfe2=.5, quitLSfail=1, ngrad=None, evaldist=1e-6, H0=None, scale=1,
-         output_records=2
-         ):
+         output_records=2, callback=None):
     """
     Make a single run of BFGS from one starting point. Intended to be
     called from bfgs.
@@ -195,9 +194,8 @@ def bfgs(func, x0=None, grad=None, nvar=None, nstart=None, maxit=100, nvec=0,
         assert nstart is None, (
             "Value specified for x0, expecting no value for nstart")
 
-        x0 = np.array(x0)
         if x0.ndim == 1:
-            x0 = x0.reshape((-1, 1))
+            x0 = x0[:, np.newaxis]
 
         nvar, nstart = x0.shape
 
@@ -228,9 +226,9 @@ def bfgs(func, x0=None, grad=None, nvar=None, nstart=None, maxit=100, nvec=0,
                          wolfe1=wolfe1, wolfe2=wolfe2, funcrtol=funcrtol,
                          gradnormtol=gradnormtol, fvalquit=fvalquit,
                          xnormquit=xnormquit, cpumax=cpumax,
-                         strongwolfe=strongwolfe, nvec=nvec,  verbose=verbose,
+                         strongwolfe=strongwolfe, nvec=nvec, verbose=verbose,
                          quitLSfail=quitLSfail, ngrad=ngrad, evaldist=evaldist,
-                         H0=H0, scale=scale)
+                         H0=H0, scale=scale, callback=callback)
             _x.append(x)
             _f.append(x)
             _d.append(d)
@@ -249,7 +247,7 @@ def bfgs(func, x0=None, grad=None, nvar=None, nstart=None, maxit=100, nvec=0,
                 fvalquit=fvalquit, xnormquit=xnormquit, cpumax=cpumax,
                 strongwolfe=strongwolfe, nvec=nvec, verbose=verbose,
                 quitLSfail=quitLSfail, ngrad=ngrad, evaldist=evaldist, H0=H0,
-                scale=scale)
+                scale=scale, callback=callback)
             _x.append(x)
             _f.append(f)
             _d.append(d)
@@ -265,7 +263,7 @@ def bfgs(func, x0=None, grad=None, nvar=None, nstart=None, maxit=100, nvec=0,
                 fvalquit=fvalquit, xnormquit=xnormquit, cpumax=cpumax,
                 strongwolfe=strongwolfe, nvec=nvec, verbose=verbose,
                 quitLSfail=quitLSfail, ngrad=ngrad, evaldist=evaldist, H0=H0,
-                scale=scale)
+                scale=scale, callback=callback)
             _x.append(x)
             _f.append(f)
             _d.append(d)

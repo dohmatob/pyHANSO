@@ -10,19 +10,21 @@ import time
 
 import numpy as np
 from scipy import linalg
-
+from scipy import sparse
 from hgprod import hgprod
 from qpspecial import qpspecial
 from linesch_ww import linesch_ww
 
 
-def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
+def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, funcrtol=1e-6,
              gradnormtol=1e-4, fvalquit=-np.inf, xnormquit=np.inf,
              cpumax=np.inf, strongwolfe=False, wolfe1=0, wolfe2=.5,
-             quitLSfail=1, ngrad=None, evaldist=1e-4, H0=None, scale=1):
+             quitLSfail=1, ngrad=None, evaldist=1e-4, H0=None,
+             scale=1, verbose=2, callback=None):
     """
     Make a single run of BFGS (with inexact line search) from one starting
-    point. Intended to be called from bfgs.
+    point. Intended to be called iteratively from bfgs on several starting
+    points.
 
     Parameters
     ----------
@@ -163,12 +165,12 @@ def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
             print msg
 
     # sanitize input
-    x0 = np.array(x0).ravel()
+    x0 = x0.ravel()
     nvar = np.prod(x0.shape)
-    H0 = np.eye(nvar) if H0 is None else H0
+    H0 = sparse.eye(nvar) if H0 is None else H0
     ngrad = min(100, min(2 * nvar, nvar + 10)) if ngrad is None else ngrad
-    x = np.array(x0)
-    H = np.array(H0)
+    x = x0
+    H = H0
 
     # initialize auxiliary variables
     S = []
@@ -176,7 +178,7 @@ def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
     xrec = []
     fevalrec = []
     Hrec = []
-    X = np.array([x]).T
+    X = x[:, np.newaxis]
     nG = 1
     w = 1
 
@@ -187,11 +189,10 @@ def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
 
     # first evaluation
     f, g = _fg(x)
-    # times.append((time.time() - time0, f))
 
     # check that all is still well
-    d = np.array(g)
-    G = np.array([g]).T
+    d = g
+    G = g[:, np.newaxis]
     if np.isnan(f) or np.isinf(f):
         _log('bfgs1run: f is infinite or nan at initial iterate')
         info = 5
@@ -202,21 +203,28 @@ def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
         return  x, f, d, H, 0, info, X, G, w, fevalrec, xrec, Hrec, times
 
     # enter: main loop
+
     dnorm = linalg.norm(g, 2)  # initialize dnorm stopping criterion
     f_old = f
     for it in xrange(maxit):
-        p = -np.dot(H, g) if nvec == 0 else -hgprod(H, g, S, Y)
-        gtp = np.dot(g.T, p)
-        if gtp >= 0 or np.any(np.isnan(gtp)):
+        times.append((time.time() - time0, f))
+        if callback:
+            callback(x)
+
+        p = -H.dot(g) if nvec == 0 else -hgprod(
+            H,
+            g.copy(),  # we must no corrupt g!
+            S, Y)
+        gtp = g.T.dot(p)
+        if  np.isnan(gtp) or gtp >= 0:
             _log(
                 'bfgs1run: not descent direction, quitting after %d '
                 'iteration(s), f = %g, dnorm = %5.1e, gtp=%s' % (
                     it + 1, f, dnorm, gtp))
             info = 6
-            times.append((time.time() - time0, f))
             return x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
 
-        gprev = np.array(g)  # for BFGS update
+        gprev = g  # for BFGS update
         if strongwolfe:
             # strong Wolfe line search is not recommended except to simulate
             # exact line search
@@ -233,7 +241,6 @@ def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
             alpha, x, f, g, fail, _, _, fevalrecline = linesch_sw(
                 func, x, p, grad=grad, wolfe1=wolfe1, wolfe2=wolfe2,
                 fvalquit=fvalquit, verbose=verbose)
-
             # function values are not returned in strongwolfe, so set
             # fevalrecline to nan
             # fevalrecline = np.nan
@@ -260,18 +267,18 @@ def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
         # and replace them with new gradient
         if alpha * linalg.norm(p, 2) > evaldist:
             nG = 1
-            G = np.array([g]).T
-            X = np.array([x]).T
+            G = g[:, np.newaxis]
+            X = g[:, np.newaxis]
         # otherwise add new gradient to set of saved gradients,
         # discarding oldest
         # if alread have ngrad saved gradients
         elif nG < ngrad:
-            nG += 1
-            G = np.vstack((g, G.T)).T
-            X = np.vstack((x, X.T)).T
+            nG = nG + 1
+            G = np.column_stack((g, G))
+            X = np.column_stack((x, X))
         else:  # nG = ngrad
-            G = np.vstack((g, G[..., :ngrad - 1].T)).T
-            X = np.vstack((x, X[..., :ngrad - 1].T)).T
+            G = np.column_stack((g, G[:, :ngrad - 1]))
+            X = np.column_stack((x, X[:, :ngrad - 1]))
 
         # optimality check: compute smallest vector in convex hull
         # of qualifying gradients: reduces to norm of latest gradient
@@ -285,7 +292,7 @@ def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
             _log("... done.")
         else:
             w = 1
-            d = np.array(g)
+            d = g
 
         dnorm = linalg.norm(d, 2)
 
@@ -304,7 +311,6 @@ def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
             _log('bfgs1run: reached target objective, quitting after'
                  ' %d iteration(s)' % (it + 1))
             info = 2
-            times.append((time.time() - time0, f))
             return x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
 
         # this is not checked inside the line search
@@ -312,7 +318,6 @@ def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
             _log('bfgs1run: norm(x) exceeds specified limit, quitting after'
                  ' %d iteration(s)' % (it + 1))
             info = 3
-            times.append(time.time() - time0, f)
             return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
 
         # line search failed (Wolfe conditions not both satisfied)
@@ -325,7 +330,6 @@ def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
                       'iteration(s), f = %g, dnorm = %5.1e' % (
                             it + 1, f, dnorm)))
                 info = 7
-                times.append((time.time() - time0, f))
                 return  (x, f, d, H, it, info, X, G, w, fevalrec, xrec,
                          Hrec, times)
 
@@ -334,17 +338,16 @@ def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
             _log('bfgs1run: f may be unbounded below, quitting after %d '
                  'iteration(s), f = %g' % (it + 1, f))
             info = 8
-            times.append((time.time() - time0, f))
             return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec
 
         # are we trapped in a local minimum ?
-        relative_change = np.abs(1 - 1. * f_old / f) if f != f_old else 0
+        relative_change = np.abs(1 - 1. * f_old) / np.max(np.abs(
+                [f, f_old, 1])) if f != f_old else 0
         if relative_change < funcrtol:
             _log('bfgs1run: relative change in func over last iteration (%g)'
                  ' below tolerance (%g) , quiting after %d iteration(s),'
                  ' f = %g' % (relative_change, funcrtol, it + 1, f))
             info = 9
-            times.append((time.time() - time0, f))
             return  (x, f, d, H, it, info, X, G, w, fevalrec, xrec,
                      Hrec, times)
 
@@ -359,44 +362,42 @@ def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
                     ' gradients below tolerance, quitting after '
                     '%d iteration(s), f = %g' % (it + 1, f))
             info = 0
-            times.append((time.time() - time0, f))
             return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
 
         if time.time() > cpufinish:
             _log('bfgs1run: cpu time limit exceeded, quitting after %d '
                  'iteration(s) %d' % (it + 1))
             info = 4
-            times.append((time.time() - time0, f))
             return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
 
-        s = (alpha * p).reshape((-1, 1))
-        y = g - gprev
-        sty = np.dot(s.T, y)  # successful line search ensures this is positive
-        assert sty > 0
+        s = (alpha * p)[:, np.newaxis]
+        y = (g - gprev)[:, np.newaxis]
+        sty = s.T.dot(y)  # successful line search ensures this is positive
         if nvec == 0:  # perform rank two BFGS update to the inverse Hessian H
             if sty > 0:
                 if it == 0 and scale:
                     # for full BFGS, Nocedal and Wright recommend
                     # scaling I before the first update only
-                    H = (1. * sty / np.dot(y.T, y)) * H
+                    H = (sty / y.T.dot(y)).ravel()[0] * H
                 # for formula, see Nocedal and Wright's book
                 # M = I - rho*s*y', H = M*H*M' + rho*s*s', so we have
                 # H = H - rho*s*y'*H - rho*H*y*s' + rho^2*s*y'*H*y*s'
                 # + rho*s*s' note that the last two terms combine:
                 # (rho^2*y'Hy + rho)ss'
                 rho = 1. / sty
-                Hy = np.dot(H, y).reshape((-1, 1))
-                rhoHyst = rho * np.dot(Hy, s.T)
+                Hy = H.dot(y)
+                rhoHyst = rho * Hy.dot(s.T)
                 # old version: update may not be symmetric because of rounding
                 # H = H - rhoHyst' - rhoHyst + rho*s*(y'*rhoHyst) + rho*s*s';
                 # new in version 2.02: make H explicitly symmetric
                 # also saves one outer product
                 # in practice, makes little difference, except H=H' exactly
-                ytHy = np.dot(y.T,
-                              Hy)  # could be < 0 if H not numerically pos def
+                ytHy = y.T.dot(
+                            Hy)  # could be < 0 if H not numerically pos def
                 sstfactor = np.max([rho * rho * ytHy + rho, 0])
                 sscaled = np.sqrt(sstfactor) * s
-                H = H - (rhoHyst.T + rhoHyst) + np.dot(sscaled, sscaled.T)
+                H = sparse.csr_matrix(H.toarray() - (
+                        rhoHyst.T + rhoHyst) + sscaled.dot(sscaled.T))
                 # alternatively add the update terms together first: does
                 # not seem to make significant difference
                 # update = sscaled*sscaled' - (rhoHyst' + rhoHyst);
@@ -410,18 +411,18 @@ def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
             s = alpha * p
             y = g - gprev
             if it < nvec:
-                S = np.vstack((S.T, s)).T if len(S) else s
-                Y = np.vstack((Y.T, y)).T if len(Y) else y
+                S = np.column_stack([S, s]) if len(S) else s
+                Y = np.column_stack([Y, y]) if len(Y) else y
             # could be more efficient here by avoiding moving the columns
             else:
-                S = np.vstack((S[..., 1:nvec].T, s)).T
-                Y = np.vstack((Y[..., 1:nvec].T, y)).T
+                S = np.column_stack((S[:, 1:nvec], s))
+                Y = np.column_stack((Y[:, 1:nvec], y))
+
             if scale:
                 # recommended by Nocedal-Wright
-                H = np.dot(np.dot(s.T, y), np.dot(np.dot(y.T, y), H0))
+                H = ((s.T.dot(y)) / (y.T.dot(y))) * H0
 
         f_old = f
-        times.append((time.time() - time0, f))
     # end of 'for loop'
 
     _log('bfgs1run: %d iteration(s) reached, f = %g, dnorm = %5.1e' % (
@@ -431,37 +432,40 @@ def bfgs1run(func, x0, grad=None, maxit=100, nvec=0, verbose=1, funcrtol=1e-6,
     return  x, f, d, H, it, info, X, G, w, fevalrec, xrec, Hrec, times
 
 if __name__ == '__main__':
-    nvar = 300
-    nstart = 20
-    func_name = 'Rosenbrock "Banana" function in %i dimensions' % nvar
-    import os
-    from example_functions import (l1, grad_l1)
-    from setx0 import setx0
-    import scipy.io
-    if os.path.isfile("/tmp/x0.mat"):
-        x0 = scipy.io.loadmat("/tmp/x0.mat", squeeze_me=True,
-                              struct_as_record=False)['x0']
-    else:
-        x0 = setx0(nvar, nstart)
+    # nvar = 300
+    # nstart = 20
+    # func_name = 'Rosenbrock "Banana" function in %i dimensions' % nvar
+    # import os
+    # from example_functions import (l1, grad_l1)
+    # from setx0 import setx0
+    # import scipy.io
+    # if os.path.isfile("/tmp/x0.mat"):
+    #     x0 = scipy.io.loadmat("/tmp/x0.mat", squeeze_me=True,
+    #                           struct_as_record=False)['x0']
+    # else:
+    #     x0 = setx0(nvar, nstart)
 
-    if x0.ndim == 1:
-        x0 = x0.reshape((-1, 1))
+    # if x0.ndim == 1:
+    #     x0 = x0.reshape((-1, 1))
 
-    _x = None
-    _f = np.inf
-    for j in xrange(x0.shape[1]):
-        print ">" * 100, "(j = %i)" % j
-        x, f = bfgs1run(l1,
-                        x0[..., j],
-                        grad=grad_l1,
-                        maxit=100,
-                        verbose=2,
-                        nvec=10
-                        )[:2]
-        if f < _f:
-            _f = f
-            _x = x
-        print "<" * 100, "(j = %i)" % j
+    # _x = None
+    # _f = np.inf
+    # for j in xrange(x0.shape[1]):
+    #     print ">" * 100, "(j = %i)" % j
+    #     x, f = bfgs1run(l1,
+    #                     x0[..., j],
+    #                     grad=grad_l1,
+    #                     maxit=100,
+    #                     verbose=2,
+    #                     nvec=10
+    #                     )[:2]
+    #     if f < _f:
+    #         _f = f
+    #         _x = x
+    #     print "<" * 100, "(j = %i)" % j
 
-    print _x
-    print _f
+    # print _x
+    # print _f
+
+    from example_functions import l1, grad_l1
+    print bfgs1run(l1, np.array([1., 1, -1]), grad=grad_l1, nvec=0)[0]

@@ -58,13 +58,13 @@ def gradsampfixed(func, x0, grad=None, f0=None, g0=None, samprad=1e-4,
 
     _log('gradsamp: sampling radius = %7.1e' % samprad)
 
-    x = np.array(x0)
+    x = x0
     f0 = _fg(x0)[0] if f0 is None else f0
     g0 = _fg(x0)[1] if g0 is None else g0
     f = f0
     g = g0
     X = x
-    G = np.array([g]).T
+    G = g
     w = 1
     quitall = 0
     cpufinish = time.time() + cpumax
@@ -78,7 +78,7 @@ def gradsampfixed(func, x0, grad=None, f0=None, g0=None, samprad=1e-4,
         # solve QP subproblem
         wnew, dnew, _, _ = qpspecial(Gnew, verbose=verbose)
         dnew = -dnew  # this is a descent direction
-        gtdnew = np.dot(g.T, dnew)   # gradient value at current point
+        gtdnew = g.T.dot(dnew)   # gradient value at current point
         dnormnew = linalg.norm(dnew, 2)
         if dnormnew < dnorm:  # for returning, may not be the final one
             dnorm = dnormnew

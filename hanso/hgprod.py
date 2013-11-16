@@ -13,16 +13,14 @@ def hgprod(H0, g, S, Y):
 
     """
 
-    q = np.array(g)
-    r = np.dot(H0, q)
+    q = g
+    r = H0.dot(q)
 
     if len(S) == 0:
         return r
 
-    S = np.array(S)
-    Y = np.array(Y)
-    S = S.reshape((-1, 1)) if S.ndim == 1 else S
-    Y = Y.reshape((-1, 1)) if Y.ndim == 1 else Y
+    S = S[:, np.newaxis] if S.ndim == 1 else S
+    Y = Y[:, np.newaxis] if Y.ndim == 1 else Y
 
     N = S.shape[1]  # number of saved vector pairs (x, y)
     alpha = np.ndarray(N)
@@ -30,14 +28,15 @@ def hgprod(H0, g, S, Y):
     for i in xrange(N - 1, 0, -1):
         s = S[..., i]
         y = Y[..., i]
-        rho[i] = 1. / np.dot(s.T, y)
-        alpha[i] = rho[i] * np.dot(s.T, q)
+        rho[i] = 1. / s.T.dot(y)
+        alpha[i] = rho[i] * s.T.dot(q)
         q -= alpha[i] * y
 
+    r = H0.dot(q)
     for i in xrange(N):
         s = S[..., i]
         y = Y[..., i]
-        beta = rho[i] * np.dot(y.T, r)
+        beta = rho[i] * y.T.dot(r)
         r += (alpha[i] - beta) * s
 
     return r

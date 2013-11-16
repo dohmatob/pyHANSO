@@ -142,8 +142,6 @@ def linesch_ww(func, x0, d, grad=None, func0=None, grad0=None, wolfe1=0,
         if verbose > level:
             print msg
 
-    x0 = np.array(x0)
-    d = np.array(d)
     func0 = _fg(x0)[0] if func0 is None else func0
     grad0 = _fg(x0)[1] if grad0 is None else grad0
 
@@ -153,7 +151,7 @@ def linesch_ww(func, x0, d, grad=None, func0=None, grad0=None, wolfe1=0,
              ' 0 <= wolfe1 <= wolfe2 <= 1')
 
     alpha = 0  # lower bound on steplength conditions
-    xalpha = np.array(x0)
+    xalpha = x0
     falpha = func0
 
     # need to pass g0, not g0'*d, in case line search fails
@@ -161,7 +159,7 @@ def linesch_ww(func, x0, d, grad=None, func0=None, grad0=None, wolfe1=0,
     #  upper bound on steplength satisfying weak Wolfe conditions
     beta = np.inf
     gbeta = np.nan * np.ones(x0.shape)
-    g0 = np.dot(grad0.T, d)
+    g0 = grad0.T.dot(d)
     if g0 >= 0:
         # error('linesch_ww_mod: g0 is nonnegative, indicating d not
         # a descent direction')
@@ -184,6 +182,8 @@ def linesch_ww(func, x0, d, grad=None, func0=None, grad0=None, wolfe1=0,
                 1e5 / dnorm)))  # allows more if ||d|| small
     done = 0
     fevalrec = []
+    x0 = x0.ravel()
+    d = d.ravel()
     while not done:
         x = x0 + t * d
         nfeval = nfeval + 1
@@ -198,7 +198,7 @@ def linesch_ww(func, x0, d, grad=None, func0=None, grad0=None, wolfe1=0,
             return (alpha, xalpha, falpha, galpha, fail, beta,
                     gbeta, fevalrec)
 
-        gtd = np.dot(g.T, d)
+        gtd = g.T.dot(d)
 
         # the first condition must be checked first. NOTE THE >=.
         if f >= func0 + wolfe1 * t * g0 or np.isnan(f):
@@ -254,4 +254,4 @@ def linesch_ww(func, x0, d, grad=None, func0=None, grad0=None, wolfe1=0,
 
 if __name__ == '__main__':
     from example_functions import l1, grad_l1
-    print linesch_ww([1, 1], [-1, -2], l1, grad_l1)
+    print linesch_ww(l1, np.ones(640000), -np.ones(640000), grad=grad_l1)
