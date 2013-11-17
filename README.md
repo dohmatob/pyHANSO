@@ -4,6 +4,12 @@ pyHANSO
 pyHANSO: Python Implementation of Michael Overton's [HANSO](http://www.cs.nyu.edu/~overton/papers/pdffiles/bfgs_inexactLS.pdf) (Hybrid Algorithm for Non-Smooth Optimization)
 
 
+Dependencies
+============
+The required dependencies to sue the software are Python >= 2.7, setuptools, Numpy >= 1.6.1,
+SciPy >= 0.13, and optionally matplotlib for the demos. pyHANSO might work for older versions
+of this software but I haven't tried them.
+
 Installation
 ============
 
@@ -13,11 +19,9 @@ Examples
 ========
 A good entry-point for the code would be to run,
 
- 		python hanso/hanso.py
+	python hanso/hanso.py
 
-TODO
-====
-Modify code to use scipy's low-memory BGFS with HANSO's linesch_ww.
+
 
 Send Bugs To
 =============
